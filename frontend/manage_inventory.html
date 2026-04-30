@@ -80,15 +80,18 @@
             <div style="text-align:center; padding:50px; color:#999;">Loading products...</div>
         </div>
     </div>
-
-    <script>
+<script>
         const userEmail = localStorage.getItem('userEmail');
+
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = loadInventory;
 
         async function loadInventory() {
             try {
-                const res = await fetch(`http://localhost:5000/api/get-shop-all/${userEmail}`);
+                // Updated: Localhost ki jagah Render URL
+                const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${userEmail}`);
                 const data = await res.json();
                 
                 if(data.success) {
@@ -100,7 +103,6 @@
                         const row = document.createElement('div');
                         row.className = 'product-row';
                         
-                        // Check if inStock is true or false
                         const isInStock = p.inStock !== false;
 
                         row.innerHTML = `
@@ -132,31 +134,46 @@
                     });
                 }
             } catch (err) {
-                console.error("Error:", err);
+                console.error("Error loading inventory:", err);
+                document.getElementById('full-inventory-list').innerHTML = "<p style='text-align:center; padding:40px; color:red;'>Server connecting... ⏳</p>";
             }
         }
 
         async function toggleStock(id, isChecked) {
             try {
-                const res = await fetch('http://localhost:5000/api/toggle-stock', {
+                // Updated: Localhost ki jagah Render URL
+                const res = await fetch(`${API_BASE_URL}/api/toggle-stock`, {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({ id: id, inStock: isChecked })
                 });
                 
                 if(res.ok) {
-                    // Update UI immediately without full reload for smoothness
+                    // Update UI immediately for smoothness
                     loadInventory();
                 }
             } catch (err) {
-                alert("Stock update failed!");
+                console.error("Stock update error:", err);
+                alert("Stock update failed! Is the backend live?");
             }
         }
 
         async function deleteProduct(id) {
             if(confirm("Bhai, pakka delete karna hai? Ye wapas nahi aayega!")) {
-                await fetch(`http://localhost:5000/api/delete-product/${id}`, { method: 'DELETE' });
-                loadInventory();
+                try {
+                    // Updated: Localhost ki jagah Render URL
+                    const res = await fetch(`${API_BASE_URL}/api/delete-product/${id}`, { 
+                        method: 'DELETE' 
+                    });
+                    
+                    if(res.ok) {
+                        alert("Product delete ho gaya!");
+                        loadInventory();
+                    }
+                } catch (err) {
+                    console.error("Delete error:", err);
+                    alert("Delete failed! Server connection issue.");
+                }
             }
         }
     </script>

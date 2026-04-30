@@ -87,8 +87,11 @@
         </form>
     </div>
 
-    <script>
-        const API_BASE = "http://localhost:5000";
+  <script>
+        // --- CONFIGURATION ---
+        // Aapka Render Backend URL yahan set hai
+        const API_BASE = "https://localcart-c6il.onrender.com";
+        
         const params = new URLSearchParams(window.location.search);
         
         // Priority: 1. URL ID, 2. LocalStorage ID (Last edited)
@@ -108,7 +111,7 @@
 
         async function fetchProductDetails() {
             try {
-                // Backend route should handle getting single product by ID
+                // Updated: Localhost ki jagah API_BASE use kiya
                 const res = await fetch(`${API_BASE}/api/get-shop-all/${localStorage.getItem('userEmail')}`);
                 const data = await res.json();
                 
@@ -124,7 +127,10 @@
                         renderImages();
                     }
                 }
-            } catch (err) { console.error("Load Error:", err); }
+            } catch (err) { 
+                console.error("Load Error:", err);
+                alert("Server se data nahi mil raha. Check karein backend live hai ya nahi.");
+            }
         }
 
         function renderImages() {
@@ -150,6 +156,7 @@
             
             document.getElementById('u-status').innerText = "Uploading... ⏳";
             try {
+                // Updated: Localhost ki jagah API_BASE use kiya
                 const res = await fetch(`${API_BASE}/api/upload-multiple`, { method: 'POST', body: formData });
                 const data = await res.json();
                 if(data.success) {
@@ -157,7 +164,10 @@
                     renderImages();
                     document.getElementById('u-status').innerText = "Done! ✅";
                 }
-            } catch (err) { alert("Upload failed"); }
+            } catch (err) { 
+                alert("Upload failed. Check your connection."); 
+                document.getElementById('u-status').innerText = "Upload failed! ❌";
+            }
         }
 
         function removeImg(index) {
@@ -174,7 +184,6 @@
             saveBtn.disabled = true;
 
             const payload = {
-                // Backend field must match what you send
                 productId: productId, 
                 name: document.getElementById('e-name').value,
                 price: document.getElementById('e-price').value,
@@ -184,7 +193,7 @@
             };
 
             try {
-                // Ensure this route exists in your server.js
+                // Updated: Localhost ki jagah API_BASE use kiya
                 const res = await fetch(`${API_BASE}/api/update-product`, {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
@@ -197,14 +206,15 @@
                     statusDiv.style.color = "#155724";
                     statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Product Updated Successfully!';
                     
-                    // Form data remains on screen. Just hide message after 3s.
                     setTimeout(() => { statusDiv.style.display = "none"; }, 3000);
+                } else {
+                    throw new Error("Update failed");
                 }
             } catch (err) {
                 statusDiv.style.display = "block";
                 statusDiv.style.background = "#f8d7da";
                 statusDiv.style.color = "#721c24";
-                statusDiv.innerHTML = 'Error: Could not update product.';
+                statusDiv.innerHTML = 'Error: Could not update product. Backend check karein.';
             } finally {
                 saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Product';
                 saveBtn.disabled = false;

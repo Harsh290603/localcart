@@ -11,11 +11,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isLogin = false; 
 
+    // --- CONFIGURATION ---
+    // Aapka Render Backend URL yahan set kar diya hai
+    const API_BASE_URL = 'https://localcart-c6il.onrender.com'; 
+
     // 1. PASSWORD SHOW/HIDE LOGIC
     togglePassword.addEventListener('click', function () {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
         this.classList.toggle('fa-eye-slash');
+        this.classList.toggle('fa-eye');
     });
 
     // 2. TOGGLE LOGIN/SIGNUP UI LOGIC
@@ -47,13 +52,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isLogin) {
             const username = document.getElementById('username').value;
             if(!username) {
-                alert("please enter the username");
+                alert("Please enter your full name.");
                 return;
             }
             payload.username = username;
         }
 
-        const url = isLogin ? 'http://localhost:5000/login' : 'http://localhost:5000/signup';
+        // Updated: Ab ye localhost ki jagah Render URL use karega
+        const url = isLogin ? `${API_BASE_URL}/login` : `${API_BASE_URL}/signup`;
+
+        // Loading state
+        mainBtn.innerText = isLogin ? "Logging in... ⏳" : "Signing up... ⏳";
+        mainBtn.disabled = true;
 
         try {
             const response = await fetch(url, {
@@ -66,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (response.ok) {
                 // --- DATA PERSISTENCE ---
-                // Browser ki memory mein zaroori info save karo
                 localStorage.setItem('userEmail', email); 
                 
                 if (data.user) {
@@ -88,17 +97,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     // Signup ke baad refresh karke Login mode dikhao
-                    alert("Account created login and setup your account");
+                    alert("Account created! Please login now.");
                     location.reload(); 
                 }
                 
             } else {
-                alert(data.message); 
+                alert(data.message || "Authentication failed."); 
             }
 
         } catch (error) {
-            console.error("Error:", error);
-            alert("backend server error ");
+            console.error("Auth Error:", error);
+            // Hint: Render free tier pe thoda time leta hai "wake up" hone mein
+            alert("Backend server error! Agar server start nahi hua hai toh 30-40 seconds wait karke dubara try karein.");
+        } finally {
+            mainBtn.disabled = false;
+            mainBtn.innerText = isLogin ? "Login" : "Sign Up";
         }
     });
 });

@@ -62,8 +62,13 @@
         </section>
     </div>
 
+    <!-- ... baaki upar ka HTML same rahega ... -->
+
     <script>
         const userEmail = localStorage.getItem('userEmail');
+        
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         async function uploadImages() {
             const files = document.getElementById('p-images-file').files;
@@ -75,14 +80,20 @@
             document.getElementById('p-status').innerText = "Uploading... ⏳";
             
             try {
-                const res = await fetch('http://localhost:5000/api/upload-multiple', { method: 'POST', body: formData });
+                // Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/upload-multiple`, { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                
                 const data = await res.json();
                 if(data.success) {
                     document.getElementById('p-urls').value = JSON.stringify(data.imageUrls);
                     document.getElementById('p-status').innerText = "All images ready! ✅";
                 }
             } catch (err) {
-                document.getElementById('p-status').innerText = "Upload failed! ❌";
+                console.error("Upload error:", err);
+                document.getElementById('p-status').innerText = "Upload failed! ❌ Check if server is live.";
             }
         }
 
@@ -91,7 +102,6 @@
             const submitBtn = document.getElementById('submit-btn');
             const msgBox = document.getElementById('msg-box');
 
-            // Button ko disable kar rahe hain taaki double click na ho
             submitBtn.innerText = "Adding... ⏳";
             submitBtn.disabled = true;
 
@@ -105,24 +115,27 @@
             };
 
             try {
-                const res = await fetch('http://localhost:5000/api/add-product', {
+                // Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/add-product`, {
                     method: 'POST', 
                     headers: {'Content-Type':'application/json'}, 
                     body: JSON.stringify(payload)
                 });
 
                 if(res.ok) {
-                    // Success Msg dikhana aur form reset karna
                     msgBox.style.display = "block";
                     document.getElementById('product-form').reset();
                     document.getElementById('p-status').innerText = "";
                     document.getElementById('p-urls').value = "";
                     
-                    // 4 second baad message hata dena
                     setTimeout(() => { msgBox.style.display = "none"; }, 4000);
+                } else {
+                    const errorData = await res.json();
+                    alert("Error: " + (errorData.message || "Could not add product"));
                 }
             } catch (err) {
-                alert("Something went wrong!");
+                console.error("Form submit error:", err);
+                alert("Something went wrong! Is the backend server running?");
             } finally {
                 submitBtn.innerText = "List Product";
                 submitBtn.disabled = false;

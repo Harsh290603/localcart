@@ -97,6 +97,9 @@
         const loggedInEmail = localStorage.getItem('userEmail');
         const loggedInName = localStorage.getItem('userName');
 
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
         window.onload = () => {
             if(!loggedInEmail) {
                 alert("Bhai login toh kar lo pehle!");
@@ -203,12 +206,12 @@
 
             if(!name || !phone || !addr) return alert("Pura details bhariye bhai!");
 
-            btn.innerText = "Placing Order...";
+            btn.innerText = "Placing Order... ⏳";
             btn.disabled = true;
 
             const payload = {
                 customerName: name,
-                customerEmail: loggedInEmail, // Auto Email
+                customerEmail: loggedInEmail,
                 customerPhone: phone,
                 customerAddress: addr,
                 items: cart,
@@ -217,7 +220,8 @@
             };
 
             try {
-                const res = await fetch('http://localhost:5000/api/place-order', {
+                // Updated: Localhost hata kar Render URL connect kiya
+                const res = await fetch(`${API_BASE_URL}/api/place-order`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -229,13 +233,16 @@
                     localStorage.removeItem('cart');
                     location.href = 'my_orders.html';
                 } else {
-                    alert("Order fail ho gaya. Backend check karein.");
+                    const data = await res.json();
+                    alert("Order fail ho gaya: " + (data.message || "Server error"));
                     btn.innerText = "Confirm Order (COD)";
                     btn.disabled = false;
                 }
             } catch (err) {
-                alert("Server Connection Error!");
+                console.error("Order Error:", err);
+                alert("Server Connection Error! Backend live hone mein time le raha ho sakta hai.");
                 btn.disabled = false;
+                btn.innerText = "Confirm Order (COD)";
             }
         }
     </script>

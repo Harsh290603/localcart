@@ -44,46 +44,78 @@
             </button>
         </form>
     </div>
-
-    <script>
+<script>
         const userEmail = localStorage.getItem('userEmail');
+        
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = async () => {
-            if(!userEmail) window.location.href = 'index.html';
+            if(!userEmail) {
+                alert("Please login as a business owner first!");
+                window.location.href = 'index.html';
+                return;
+            }
             fetchShopDetails();
         };
 
         async function fetchShopDetails() {
-            const res = await fetch(`http://localhost:5000/api/get-shop-all/${userEmail}`);
-            const data = await res.json();
-            if(data.success && data.shop) {
-                const s = data.shop;
-                document.getElementById('s-name').value = s.name || '';
-                document.getElementById('s-phone').value = s.phone || '';
-                document.getElementById('s-deal').value = s.dealIn || '';
-                document.getElementById('s-address').value = s.address || '';
-                document.getElementById('s-url').value = s.image || '';
-                if(s.image) document.getElementById('shop-img-preview').style.backgroundImage = `url('${s.image}')`;
+            try {
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${userEmail}`);
+                const data = await res.json();
+                if(data.success && data.shop) {
+                    const s = data.shop;
+                    document.getElementById('s-name').value = s.name || '';
+                    document.getElementById('s-phone').value = s.phone || '';
+                    document.getElementById('s-deal').value = s.dealIn || '';
+                    document.getElementById('s-address').value = s.address || '';
+                    document.getElementById('s-url').value = s.image || '';
+                    if(s.image) {
+                        document.getElementById('shop-img-preview').style.backgroundImage = `url('${s.image}')`;
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching shop details:", err);
             }
         }
 
         async function uploadShopImage() {
-            const file = document.getElementById('s-file').files[0];
+            const fileInput = document.getElementById('s-file');
+            const file = fileInput.files[0];
+            if(!file) return;
+
             const formData = new FormData();
             formData.append('shopImage', file);
 
             document.getElementById('up-status').innerText = "Uploading... ⏳";
-            const res = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('s-url').value = data.imageUrl;
-                document.getElementById('shop-img-preview').style.backgroundImage = `url('${data.imageUrl}')`;
-                document.getElementById('up-status').innerText = "Image updated! ✅";
+            
+            try {
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/upload`, { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    document.getElementById('s-url').value = data.imageUrl;
+                    document.getElementById('shop-img-preview').style.backgroundImage = `url('${data.imageUrl}')`;
+                    document.getElementById('up-status').innerText = "Image updated! ✅";
+                }
+            } catch (err) {
+                document.getElementById('up-status').innerText = "Upload failed! ❌";
+                console.error("Upload error:", err);
             }
         }
 
         document.getElementById('edit-shop-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button');
+            submitBtn.innerText = "Saving... ⏳";
+            submitBtn.disabled = true;
+
             const payload = {
                 ownerEmail: userEmail,
                 name: document.getElementById('s-name').value,
@@ -93,15 +125,26 @@
                 image: document.getElementById('s-url').value
             };
 
-            const res = await fetch('http://localhost:5000/api/shop-setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            try {
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/shop-setup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            if(res.ok) {
-                alert("Store details updated!");
-                window.location.href = 'business_dashboard.html';
+                if(res.ok) {
+                    alert("Store details updated successfully! 🚀");
+                    window.location.href = 'business_dashboard.html';
+                } else {
+                    alert("Failed to update store. Try again.");
+                }
+            } catch (err) {
+                console.error("Form error:", err);
+                alert("Server error! Please check if your backend is live.");
+            } finally {
+                submitBtn.innerText = "Save Store Details";
+                submitBtn.disabled = false;
             }
         });
     </script>

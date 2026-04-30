@@ -59,12 +59,15 @@
         </div>
     </div>
 
-    <script>
+<script>
         const params = new URLSearchParams(window.location.search);
         const shopEmail = params.get('email');
         
-        // Cart Structure: { "Product Name": { price: 100, qty: 1 } }
-        let cart = JSON.parse(localStorage.getItem('myCart')) || {};
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
+        // Cart Structure update: Ab hum IDs use karenge taaki clash na ho
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 
         window.onload = async () => {
             if(!shopEmail) return window.location.href='customer_dashboard.html';
@@ -73,21 +76,39 @@
         };
 
         async function fetchShopData() {
-            const res = await fetch(`http://localhost:5000/api/get-shop-all/${shopEmail}`);
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('b-name').innerText = data.shop.name;
-                document.getElementById('b-deal').innerText = data.shop.dealIn;
-                document.getElementById('b-img').style.backgroundImage = `url('${data.shop.image}')`;
-                renderItems(data.products);
+            try {
+                // Updated: Localhost ki jagah Render URL
+                const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${shopEmail}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    document.getElementById('b-name').innerText = data.shop.name || "Local Shop";
+                    document.getElementById('b-deal').innerText = data.shop.dealIn || "General Store";
+                    
+                    if(data.shop.image) {
+                        document.getElementById('b-img').style.backgroundImage = `url('${data.shop.image}')`;
+                    }
+                    renderItems(data.products, data.shop.name);
+                }
+            } catch (err) {
+                console.error("Fetch error:", err);
+                document.getElementById('item-list').innerHTML = "<p>Server se connect nahi ho pa raha... ⏳</p>";
             }
         }
 
-        function renderItems(products) {
+        function renderItems(products, shopName) {
             const list = document.getElementById('item-list');
             list.innerHTML = "";
+            
+            if(products.length === 0) {
+                list.innerHTML = "<p style='text-align:center; color:#999;'>No products listed yet.</p>";
+                return;
+            }
+
             products.forEach(p => {
-                const isAdded = cart[p.name];
+                // Check if product is already in cart
+                const cartItem = cart.find(item => item._id === p._id);
+                
                 const div = document.createElement('div');
                 div.className = 'product-card-zomato';
                 div.innerHTML = `
@@ -95,46 +116,54 @@
                         <h4 style="margin-bottom:5px;">${p.name}</h4>
                         <p style="font-weight:bold; color:#2f3542;">₹${p.price}</p>
                     </div>
-                    <div id="btn-container-${p.name.replace(/\s+/g, '')}">
-                        ${isAdded ? getQtyControls(p.name, p.price) : `<button class="add-btn" onclick="addToCart('${p.name}', ${p.price})">ADD</button>`}
+                    <div id="btn-container-${p._id}">
+                        ${cartItem ? getQtyControls(p._id, p.price, p.name, shopName) : 
+                        `<button class="add-btn" onclick="addToCart('${p._id}', ${p.price}, '${p.name}', '${shopName}', '${p.shopEmail}')">ADD</button>`}
                     </div>
                 `;
                 list.appendChild(div);
             });
         }
 
-        function getQtyControls(name, price) {
+        function getQtyControls(id, price, name, shopName) {
+            const item = cart.find(i => i._id === id);
             return `
                 <div class="qty-controls">
-                    <span class="qty-btn" onclick="updateQty('${name}', ${price}, -1)">-</span>
-                    <span id="qty-${name.replace(/\s+/g, '')}">${cart[name].qty}</span>
-                    <span class="qty-btn" onclick="updateQty('${name}', ${price}, 1)">+</span>
+                    <span class="qty-btn" onclick="updateQty('${id}', -1)">-</span>
+                    <span id="qty-${id}">${item ? item.qty : 0}</span>
+                    <span class="qty-btn" onclick="updateQty('${id}', 1)">+</span>
                 </div>
             `;
         }
 
-        function addToCart(name, price) {
-            cart[name] = { price: price, qty: 1 };
-            saveAndRefresh(name, price);
+        function addToCart(id, price, name, shopName, shopEmail) {
+            // Cart mein object push kar rahe hain jo Checkout page ke liye zaroori hai
+            cart.push({
+                _id: id,
+                name: name,
+                price: price,
+                qty: 1,
+                shopName: shopName,
+                shopEmail: shopEmail
+            });
+            saveAndRefresh();
         }
 
-        function updateQty(name, price, change) {
-            cart[name].qty += change;
-            if(cart[name].qty <= 0) {
-                delete cart[name];
+        function updateQty(id, change) {
+            const itemIndex = cart.findIndex(i => i._id === id);
+            if(itemIndex > -1) {
+                cart[itemIndex].qty += change;
+                if(cart[itemIndex].qty <= 0) {
+                    cart.splice(itemIndex, 1);
+                }
+                saveAndRefresh();
             }
-            saveAndRefresh(name, price);
         }
 
-        function saveAndRefresh(name, price) {
-            localStorage.setItem('myCart', JSON.stringify(cart));
-            const container = document.getElementById(`btn-container-${name.replace(/\s+/g, '')}`);
-            if(cart[name]) {
-                container.innerHTML = getQtyControls(name, price);
-            } else {
-                container.innerHTML = `<button class="add-btn" onclick="addToCart('${name}', ${price})">ADD</button>`;
-            }
-            updateCartUI();
+        function saveAndRefresh() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            // Simple refresh instead of complex ID manipulation to avoid UI bugs
+            location.reload(); 
         }
 
         function updateCartUI() {
@@ -142,10 +171,10 @@
             let totalQty = 0;
             let totalAmt = 0;
 
-            for(let key in cart) {
-                totalQty += cart[key].qty;
-                totalAmt += (cart[key].qty * cart[key].price);
-            }
+            cart.forEach(item => {
+                totalQty += item.qty;
+                totalAmt += (item.qty * item.price);
+            });
 
             if(totalQty > 0) {
                 strip.style.display = "flex";
@@ -157,8 +186,8 @@
         }
 
         function checkout() {
-            // Abhi ke liye bas alert, baad mein iska checkout page banayenge
-            alert("Bhai, Checkout page agle step mein banate hain!");
+            // Ab aapka checkout page live hai, toh wahan bhej do
+            window.location.href = 'cart.html';
         }
     </script>
 </body>

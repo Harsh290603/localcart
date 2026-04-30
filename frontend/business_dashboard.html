@@ -98,6 +98,9 @@
         const userName = localStorage.getItem('userName');
         let isShopLive = false;
 
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
         if(!userEmail) window.location.href = 'index.html';
         document.getElementById('owner-name').innerText = `Welcome, ${userName}`;
 
@@ -105,7 +108,8 @@
 
         async function fetchDashboardData() {
             try {
-                const res = await fetch(`http://localhost:5000/api/get-shop-all/${userEmail}`);
+                // Updated: Localhost ki jagah Render URL
+                const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${userEmail}`);
                 const data = await res.json();
                 
                 if(data.success) {
@@ -119,20 +123,26 @@
                 }
             } catch (err) { 
                 console.error("Dashboard Error:", err);
-                document.getElementById('shop-display-name').innerText = "Server Error ❌";
+                document.getElementById('shop-display-name').innerText = "Server Connecting... ⏳";
+                // Tip: Render free tier pe thoda time leta hai start hone mein
             }
         }
 
         async function toggleLiveStatus() {
             const newStatus = !isShopLive;
-            const res = await fetch('http://localhost:5000/api/shop-setup', {
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ ownerEmail: userEmail, isLive: newStatus })
-            });
-            if(res.ok) {
-                isShopLive = newStatus;
-                updateStatusUI(newStatus);
+            try {
+                // Updated: Localhost ki jagah Render URL
+                const res = await fetch(`${API_BASE_URL}/api/shop-setup`, {
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ ownerEmail: userEmail, isLive: newStatus })
+                });
+                if(res.ok) {
+                    isShopLive = newStatus;
+                    updateStatusUI(newStatus);
+                }
+            } catch (err) {
+                alert("Action failed! Please check your internet or wait for server to respond.");
             }
         }
 

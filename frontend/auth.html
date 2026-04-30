@@ -1,10 +1,67 @@
 <div class="auth-container">
     <h2>Local Cart</h2>
     <form id="signupForm">
-        <input type="text" placeholder="Full Name" required>
-        <input type="email" placeholder="Email Address" required>
-        <input type="password" placeholder="Create Password" required>
-        <button type="submit">Join Local Cart</button>
+        <!-- Maine yahan 'id' add kar di hain taaki JS se data utha saku -->
+        <input type="text" id="fullName" placeholder="Full Name" required>
+        <input type="email" id="email" placeholder="Email Address" required>
+        <input type="password" id="password" placeholder="Create Password" required>
+        
+        <!-- Role select karna zaroori hai backend ke liye -->
+        <select id="role" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc;">
+            <option value="customer">I am a Customer</option>
+            <option value="business">I am a Business Owner</option>
+        </select>
+
+        <button type="submit" id="submitBtn">Join Local Cart</button>
     </form>
-    <p>Already have an account? <a href="#">Login here</a></p>
+    <p>Already have an account? <a href="login.html">Login here</a></p>
 </div>
+
+<script>
+    const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const fullName = document.getElementById('fullName').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
+
+        // Loading state
+        submitBtn.innerText = "Joining... ⏳";
+        submitBtn.disabled = true;
+
+        const payload = {
+            username: fullName,
+            email: email,
+            password: password,
+            role: role
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("Welcome to Local Cart! Account created successfully.");
+                // Signup ke baad login page par bhej do
+                window.location.href = 'login.html'; 
+            } else {
+                alert(data.message || "Signup failed");
+            }
+        } catch (error) {
+            console.error("Signup Error:", error);
+            alert("Server error! Please check if your Render backend is live.");
+        } finally {
+            submitBtn.innerText = "Join Local Cart";
+            submitBtn.disabled = false;
+        }
+    });
+</script>

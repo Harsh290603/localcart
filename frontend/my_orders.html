@@ -67,9 +67,12 @@
         </div>
     </div>
 
-    <script>
+   <script>
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
         // Backend update ke hisaab se hum 'Email' use kar rahe hain
-        const lastEmailUsed = localStorage.getItem('lastCustomerEmail'); 
+        const lastEmailUsed = localStorage.getItem('lastCustomerEmail') || localStorage.getItem('userEmail'); 
 
         window.onload = fetchMyOrders;
 
@@ -88,8 +91,8 @@
             }
 
             try {
-                // API Call using Email
-                const res = await fetch(`http://localhost:5000/api/my-orders/${lastEmailUsed}`);
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/my-orders/${lastEmailUsed}`);
                 const data = await res.json();
 
                 if (!data.success || data.orders.length === 0) {
@@ -103,8 +106,8 @@
                 }
 
                 list.innerHTML = "";
+                // Orders ko reverse order mein dikha rahe hain taaki naya order upar dikhe
                 data.orders.forEach(order => {
-                    // Status badge logic
                     const status = (order.status || 'Pending').toLowerCase();
                     const statusClass = status === 'completed' ? 'status-completed' : 'status-pending';
                     
@@ -137,7 +140,7 @@
                                 <i class="fas fa-truck"></i> Delivery to: <b>${order.customerName}</b>
                             </div>
                             <div style="text-align:right;">
-                                <small style="display:block; color:#a4b0be;">Total Paid</small>
+                                <small style="display:block; color:#a4b0be;">Total Amount</small>
                                 <span class="grand-total">₹${order.totalAmount}</span>
                             </div>
                         </div>
@@ -146,6 +149,7 @@
                 });
 
             } catch (err) {
+                console.error("Fetch Orders Error:", err);
                 list.innerHTML = `
                     <div style="text-align:center; padding:50px; color:#ff4757;">
                         <i class="fas fa-exclamation-triangle fa-2x"></i>

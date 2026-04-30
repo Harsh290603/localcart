@@ -89,9 +89,13 @@
         </div>
     </div>
 
-    <script>
+  <script>
         let allShops = [];
         const userName = localStorage.getItem('userName');
+        
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
         if(userName) {
             document.getElementById('cust-name').style.display = "inline";
             document.getElementById('cust-name').innerText = `Hi, ${userName}`;
@@ -101,7 +105,8 @@
 
         async function loadMarketplace() {
             try {
-                const res = await fetch('http://localhost:5000/api/all-shops');
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/all-shops`);
                 const data = await res.json();
 
                 if(data.success) {
@@ -109,8 +114,12 @@
                     displayShops(allShops);
                 }
             } catch (err) { 
-                console.error(err);
-                document.getElementById('shops-list').innerHTML = "<p>Failed to connect to server ❌</p>";
+                console.error("Marketplace Load Error:", err);
+                document.getElementById('shops-list').innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 50px;">
+                        <p>Connecting to server... ⏳</p>
+                        <small style="color: #747d8c;">Render server thoda time le sakta hai start hone mein.</small>
+                    </div>`;
             }
         }
 
@@ -132,6 +141,7 @@
                 card.className = 'shop-card';
                 card.onclick = () => window.location.href = `shop_view.html?email=${shop.ownerEmail}`;
                 
+                // Image handling: Agar shop image hai toh thik, warna placeholder
                 const img = shop.image || 'https://via.placeholder.com/400x200?text=Shop+Image';
                 
                 card.innerHTML = `
@@ -153,7 +163,7 @@
             const query = document.getElementById('shopSearch').value.toLowerCase();
             const filtered = allShops.filter(s => 
                 s.name.toLowerCase().includes(query) || 
-                s.dealIn.toLowerCase().includes(query)
+                (s.dealIn && s.dealIn.toLowerCase().includes(query))
             );
             displayShops(filtered);
         }

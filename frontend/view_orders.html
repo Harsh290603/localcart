@@ -58,40 +58,48 @@
         </div>
     </div>
 
-    <script>
+ <script>
         const params = new URLSearchParams(window.location.search);
         const filterStatus = params.get('status') || 'pending';
-        const ownerEmail = localStorage.getItem('userEmail'); // Login waala email
+        const ownerEmail = localStorage.getItem('userEmail'); 
+
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = () => {
-            if(!ownerEmail) location.href = 'index.html';
+            if(!ownerEmail) {
+                location.href = 'index.html';
+                return;
+            }
             document.getElementById('page-title').innerText = filterStatus === 'pending' ? "Pending Orders" : "Order History";
             fetchOrders();
         };
 
         async function fetchOrders() {
             try {
-                // Backend se saare orders mangwaye
-                const res = await fetch(`http://localhost:5000/api/owner-orders/${ownerEmail}`);
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/owner-orders/${ownerEmail}`);
                 const data = await res.json();
 
                 const list = document.getElementById('orders-list');
                 
-                // Filter: Status ke hisaab se (pending/completed)
+                // Status filter (pending/completed)
                 const filteredOrders = data.orders.filter(o => o.status.toLowerCase() === filterStatus.toLowerCase());
 
                 if(filteredOrders.length === 0) {
-                    list.innerHTML = `<div style="text-align:center; padding:80px; background:white; border-radius:20px;">
-                        <i class="fas fa-box-open" style="font-size:50px; color:#eee; margin-bottom:15px;"></i>
-                        <h3 style="color:#ccc;">No ${filterStatus} orders found</h3>
-                    </div>`;
+                    list.innerHTML = `
+                        <div style="text-align:center; padding:80px; background:white; border-radius:20px;">
+                            <i class="fas fa-box-open" style="font-size:50px; color:#eee; margin-bottom:15px;"></i>
+                            <h3 style="color:#ccc;">No ${filterStatus} orders found</h3>
+                        </div>`;
                     return;
                 }
 
                 list.innerHTML = "";
 
+                // Naye orders upar dikhane ke liye reverse kiya
                 filteredOrders.reverse().forEach(order => {
-                    // Logic: Sirf is owner ke items filter karo
+                    // Logic: Sirf is shop ke items dikhao (Agar marketplace order hai)
                     const myItems = order.items.filter(item => item.shopEmail === ownerEmail);
                     const mySubtotal = myItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
@@ -134,24 +142,36 @@
                                 <h3>₹${mySubtotal}</h3>
                             </div>
                             ${filterStatus === 'pending' ? `
-                                <button class="action-btn" onclick="completeOrder('${order._id}')">
+                                <button class="action-btn" id="btn-${order._id}" onclick="completeOrder('${order._id}')">
                                     <i class="fas fa-shipping-fast"></i> Mark as Delivered
                                 </button>
                             ` : `
-                                <div style="color:#2ed573; font-weight:bold;"><i class="fas fa-check-circle"></i> Success</div>
+                                <div style="color:#2ed573; font-weight:bold;"><i class="fas fa-check-circle"></i> Successfully Delivered</div>
                             `}
                         </div>
                     `;
                     list.appendChild(card);
                 });
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error("Order Fetch Error:", err);
+                document.getElementById('orders-list').innerHTML = `
+                    <div style="text-align:center; padding:50px;">
+                        <p style="color:red;">Server Connecting... ⏳</p>
+                        <small>Backend start hone mein 30-40 seconds lag sakte hain.</small>
+                    </div>`;
+            }
         }
 
         async function completeOrder(orderId) {
-            if(!confirm("order deliverd")) return;
+            if(!confirm("Bhai, order deliver ho gaya hai?")) return;
+
+            const btn = document.getElementById(`btn-${orderId}`);
+            btn.innerText = "Updating... ⏳";
+            btn.disabled = true;
 
             try {
-                const res = await fetch('http://localhost:5000/api/update-order-status', {
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/update-order-status`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ orderId: orderId, status: 'completed' })
@@ -159,10 +179,15 @@
 
                 if(res.ok) {
                     alert("Order marked as Completed! ✅");
-                    fetchOrders(); // List update
+                    fetchOrders(); // List ko refresh karein
+                } else {
+                    alert("Update fail ho gaya. Status badal nahi paya.");
                 }
             } catch (err) {
-                alert("Update fail ho gaya!");
+                console.error("Update Error:", err);
+                alert("Server Connection Error!");
+            } finally {
+                btn.disabled = false;
             }
         }
     </script>

@@ -92,9 +92,12 @@
         </div>
     </div>
 
-    <script>
+ <script>
         let cart = JSON.parse(localStorage.getItem('cart') || '[]');
         const loggedInEmail = localStorage.getItem('userEmail');
+
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = () => {
             if(!loggedInEmail) {
@@ -136,11 +139,11 @@
             }
 
             btn.disabled = true;
-            btn.innerText = "Processing Your Order...";
+            btn.innerText = "Processing Your Order... ⏳";
 
             const payload = {
                 customerName: name,
-                customerEmail: loggedInEmail, // Backend track email se karega
+                customerEmail: loggedInEmail, 
                 customerPhone: phone,
                 customerAddress: `${address} (Landmark: ${landmark})`,
                 items: cart,
@@ -149,7 +152,8 @@
             };
 
             try {
-                const res = await fetch('http://localhost:5000/api/place-order', {
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/place-order`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -157,12 +161,18 @@
 
                 if(res.ok) {
                     localStorage.setItem('lastCustomerEmail', loggedInEmail);
-                    alert("🎉 Order Successful!");
+                    alert("🎉 Order Successful! Shopkeepers ko aapka order mil gaya hai.");
                     localStorage.removeItem('cart');
                     location.href = 'my_orders.html';
+                } else {
+                    const data = await res.json();
+                    alert("Order fail ho gaya: " + (data.message || "Server error"));
+                    btn.disabled = false;
+                    btn.innerText = "Confirm & Place Order";
                 }
             } catch (err) {
-                alert("Order fail ho gaya!");
+                console.error("Order Error:", err);
+                alert("Server Connection Error! Is your backend live?");
                 btn.disabled = false;
                 btn.innerText = "Confirm & Place Order";
             }

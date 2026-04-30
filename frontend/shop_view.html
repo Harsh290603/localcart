@@ -85,9 +85,13 @@
         </div>
     </div>
 
-    <script>
+ <script>
         const params = new URLSearchParams(window.location.search);
         const shopEmail = params.get('email');
+        
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
+
         let currentShopProducts = [];
         let shopNameDisplay = ""; 
         let currentImgIndex = 0;
@@ -95,17 +99,24 @@
         let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 
         window.onload = () => {
-            if(!shopEmail) location.href = 'customer_dashboard.html';
+            if(!shopEmail) {
+                location.href = 'customer_dashboard.html';
+                return;
+            }
             loadShopData();
             updateCartUI();
         };
 
         async function loadShopData() {
             try {
-                const res = await fetch(`http://localhost:5000/api/get-shop-all/${shopEmail}`);
+                // Updated: Localhost ki jagah Render URL use kiya
+                const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${shopEmail}`);
                 const data = await res.json();
+                
                 if(data.success) {
                     shopNameDisplay = data.shop.name;
+                    
+                    // Shop Hero Section Update
                     document.getElementById('shop-hero-section').innerHTML = `
                         <div class="shop-hero" style="background-image: url('${data.shop.image || 'https://via.placeholder.com/1200x400'}')">
                             <div class="shop-hero-overlay">
@@ -114,17 +125,25 @@
                             </div>
                         </div>
                     `;
+
+                    // Sirf wahi products dikhayenge jo "In Stock" hain
                     currentShopProducts = data.products.filter(p => p.inStock !== false);
                     renderProducts(currentShopProducts);
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error("Shop Load Error:", err);
+                document.getElementById('product-list').innerHTML = "<p style='text-align:center; grid-column:1/-1;'>Server error! Backend check karein. ❌</p>";
+            }
         }
 
         function renderProducts(items) {
             const list = document.getElementById('product-list');
-            list.innerHTML = items.length ? "" : "<p style='grid-column:1/-1; text-align:center;'>No matching products found.</p>";
+            list.innerHTML = items.length ? "" : "<p style='grid-column:1/-1; text-align:center;'>Abhi is dukan mein koi saaman nahi hai.</p>";
+            
             items.forEach(p => {
+                // Image handling
                 const img = (p.images && p.images.length) ? p.images[0] : 'https://via.placeholder.com/200';
+                
                 const card = document.createElement('div');
                 card.className = 'p-card';
                 card.innerHTML = `
@@ -133,7 +152,9 @@
                         <h4>${p.name}</h4>
                         <div>
                             <b>₹${p.price}</b>
-                            <button id="btn-${p._id}" onclick="addToCart('${p._id}')" class="main-btn" style="padding:10px; margin-top:15px; width:100%; background:#2ed573;">Add to Cart</button>
+                            <button id="btn-${p._id}" onclick="addToCart('${p._id}')" class="main-btn" style="padding:10px; margin-top:15px; width:100%; background:#2ed573;">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
                         </div>
                     </div>
                 `;
@@ -143,23 +164,30 @@
 
         function filterProducts() {
             const query = document.getElementById('p-search').value.toLowerCase();
-            const filtered = currentShopProducts.filter(p => p.name.toLowerCase().includes(query));
+            const filtered = currentShopProducts.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                (p.category && p.category.toLowerCase().includes(query))
+            );
             renderProducts(filtered);
         }
 
+        // --- MODAL & SLIDER LOGIC ---
         function openModal(id) {
             selectedProduct = currentShopProducts.find(p => p._id === id);
             currentImgIndex = 0;
+            
             document.getElementById('modal-name').innerText = selectedProduct.name;
             document.getElementById('modal-price').innerText = '₹' + selectedProduct.price;
-            document.getElementById('modal-desc').innerText = selectedProduct.description || "No description.";
-            document.getElementById('modal-cat').innerText = selectedProduct.category;
+            document.getElementById('modal-desc').innerText = selectedProduct.description || "Is product ki koi description nahi di gayi hai.";
+            document.getElementById('modal-cat').innerText = selectedProduct.category || "General";
+            
             const images = selectedProduct.images || [];
             document.getElementById('prevBtn').style.display = images.length > 1 ? 'block' : 'none';
             document.getElementById('nextBtn').style.display = images.length > 1 ? 'block' : 'none';
+            
             updateSlider();
             document.getElementById('product-modal').style.display = "block";
-            document.body.style.overflow = "hidden";
+            document.body.style.overflow = "hidden"; // Background scroll stop
         }
 
         function closeModal() { 
@@ -181,18 +209,27 @@
             updateSlider();
         }
 
+        // --- CART LOGIC ---
         function addToCart(id) {
             const prod = currentShopProducts.find(p => p._id === id);
             const exists = cart.find(item => item._id === id);
+            
             if(exists) {
                 exists.qty += 1;
             } else {
-                cart.push({ ...prod, qty: 1, shopEmail: shopEmail, shopName: shopNameDisplay }); 
+                // Shop details bhi save kar rahe hain taaki Cart page par dukan ka naam dikhe
+                cart.push({ 
+                    ...prod, 
+                    qty: 1, 
+                    shopEmail: shopEmail, 
+                    shopName: shopNameDisplay 
+                }); 
             }
+            
             localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
 
-            // Button Feedback
+            // Button Feedback Animation
             const btn = document.getElementById(`btn-${id}`);
             if(btn) {
                 const originalText = btn.innerHTML;
@@ -211,10 +248,14 @@
         }
 
         function updateCartUI() {
-            document.getElementById('cart-count').innerText = cart.reduce((sum, item) => sum + item.qty, 0);
+            const count = cart.reduce((sum, item) => sum + item.qty, 0);
+            document.getElementById('cart-count').innerText = count;
         }
 
-        window.onclick = (e) => { if(e.target == document.getElementById('product-modal')) closeModal(); };
+        // Close modal when clicking outside
+        window.onclick = (e) => { 
+            if(e.target == document.getElementById('product-modal')) closeModal(); 
+        };
     </script>
 </body>
 </html>
