@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Local Cart | Business Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Modern Dashboard Styling */
+        .db-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .action-card {
+            background: white; padding: 25px; border-radius: 15px;
+            text-align: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;
+            transition: all 0.3s ease;
+        }
+        .action-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #ff4757;
+        }
+        .action-card i { font-size: 32px; margin-bottom: 15px; }
+        .action-card h3 { margin: 0; font-size: 18px; color: #2f3542; }
+        .action-card p { font-size: 12px; color: #777; margin-top: 10px; line-height: 1.4; }
+
+        /* Icon Colors */
+        .card-pending i { color: #ff9f43; }
+        .card-completed i { color: #2ed573; }
+        .card-inventory i { color: #341f97; }
+        .card-settings i { color: #54a0ff; }
+
+        .status-container {
+            background: white; padding: 25px; border-radius: 15px;
+            border-left: 5px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 20px;
+        }
+        .status-live { border-left-color: #2ed573; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Local<span>Cart</span> Business</div>
+        <div class="nav-right">
+            <span id="owner-name" style="margin-right: 15px; font-weight: bold;">Welcome, Owner</span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="db-header">
+            <h1 id="shop-display-name">Loading Store...</h1>
+            <p>Welcome to your central control panel</p>
+        </div>
+
+        <div class="db-controls">
+            <div class="action-card card-pending" onclick="window.location.href='view_orders.html?status=pending'">
+                <i class="fas fa-clock"></i>
+                <h3>Pending Orders</h3>
+                <p>Check new orders that need to be delivered</p>
+            </div>
+
+            <div class="action-card card-completed" onclick="window.location.href='view_orders.html?status=completed'">
+                <i class="fas fa-check-double"></i>
+                <h3>Completed Orders</h3>
+                <p>History of all your successful deliveries</p>
+            </div>
+
+            <div class="action-card card-inventory" onclick="window.location.href='manage_inventory.html'">
+                <i class="fas fa-boxes"></i>
+                <h3>Manage Inventory</h3>
+                <p>Update products, prices, and stock status</p>
+            </div>
+
+            <div class="action-card card-settings" onclick="window.location.href='edit_shop.html'">
+                <i class="fas fa-store-alt"></i>
+                <h3>Store Settings</h3>
+                <p>Change shop name, address, and profile photo</p>
+            </div>
+        </div>
+
+        <div class="status-container" id="status-box">
+            <div>
+                <h3 style="margin:0;">Online Visibility</h3>
+                <p id="status-text" style="margin:5px 0 0 0;">Status: Offline ⚪</p>
+            </div>
+            <button id="live-btn" onclick="toggleLiveStatus()" class="logout-btn" style="padding: 12px 25px; font-weight: bold;"></button>
+        </div>
+    </div>
+
+    <script>
+        const userEmail = localStorage.getItem('userEmail');
+        const userName = localStorage.getItem('userName');
+        let isShopLive = false;
+
+        if(!userEmail) window.location.href = 'index.html';
+        document.getElementById('owner-name').innerText = `Welcome, ${userName}`;
+
+        window.onload = fetchDashboardData;
+
+        async function fetchDashboardData() {
+            try {
+                const res = await fetch(`http://localhost:5000/api/get-shop-all/${userEmail}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    if(data.shop) {
+                        document.getElementById('shop-display-name').innerText = data.shop.name || "My Local Store";
+                        isShopLive = data.shop.isLive;
+                        updateStatusUI(isShopLive);
+                    } else {
+                        document.getElementById('shop-display-name').innerText = "Setup Your Store";
+                    }
+                }
+            } catch (err) { 
+                console.error("Dashboard Error:", err);
+                document.getElementById('shop-display-name').innerText = "Server Error ❌";
+            }
+        }
+
+        async function toggleLiveStatus() {
+            const newStatus = !isShopLive;
+            const res = await fetch('http://localhost:5000/api/shop-setup', {
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ ownerEmail: userEmail, isLive: newStatus })
+            });
+            if(res.ok) {
+                isShopLive = newStatus;
+                updateStatusUI(newStatus);
+            }
+        }
+
+        function updateStatusUI(live) {
+            const btn = document.getElementById('live-btn');
+            const txt = document.getElementById('status-text');
+            const box = document.getElementById('status-box');
+
+            if(live) {
+                box.classList.add('status-live');
+                btn.style.background = "#ff4757";
+                btn.innerText = "Take Store Offline";
+                txt.innerHTML = "Your shop is currently <b>LIVE</b> and visible <span style='color:#2ed573;'>🟢</span>";
+            } else {
+                box.classList.remove('status-live');
+                btn.style.background = "#2ed573";
+                btn.innerText = "Go Live Now";
+                txt.innerHTML = "Your shop is currently <b>OFFLINE</b> <span style='color:#777;'>⚪</span>";
+            }
+        }
+
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href='index.html'; 
+        }
+    </script>
+</body>
+</html>

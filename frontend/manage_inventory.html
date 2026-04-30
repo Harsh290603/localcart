@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Inventory | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .inventory-container { max-width: 1000px; margin: 30px auto; padding: 20px; }
+        
+        /* Product Row Styling */
+        .product-row {
+            display: grid; 
+            grid-template-columns: 80px 2fr 1fr 1.5fr 150px;
+            align-items: center; 
+            gap: 20px; 
+            background: white; 
+            padding: 15px;
+            border-radius: 12px; 
+            margin-bottom: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        .product-row img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+        
+        /* Stock Toggle Switch (Modern look) */
+        .switch { position: relative; display: inline-block; width: 45px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ed573; }
+        input:checked + .slider:before { transform: translateX(21px); }
+        
+        .stock-info { display: flex; align-items: center; gap: 10px; }
+        .stock-status { font-size: 13px; font-weight: bold; }
+        .status-in { color: #2ed573; }
+        .status-out { color: #ff4757; }
+
+        .btn-group { display: flex; gap: 8px; }
+        .action-btn { 
+            padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; 
+            color: white; transition: 0.3s; 
+        }
+        .edit-btn { background: #57606f; }
+        .del-btn { background: #ff4757; }
+        .add-btn { 
+            background: #2f3542; color: white; padding: 12px 20px; 
+            border-radius: 8px; text-decoration: none; font-weight: bold;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+    </style>
+</head>
+<body style="background:#f8f9fa;">
+
+    <nav class="navbar">
+        <div class="logo">Local<span>Cart</span> Business</div>
+        <button class="logout-btn" onclick="location.href='business_dashboard.html'">
+            <i class="fas fa-arrow-left"></i> Dashboard
+        </button>
+    </nav>
+
+    <div class="inventory-container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+            <div>
+                <h2 style="margin:0;"><i class="fas fa-boxes"></i> Product Inventory</h2>
+                <p style="color:#777; margin:5px 0 0 0;">Manage your stock levels and product details</p>
+            </div>
+            <a href="add_product.html" class="add-btn">
+                <i class="fas fa-plus-circle"></i> Add New Product
+            </a>
+        </div>
+
+        <div id="full-inventory-list">
+            <div style="text-align:center; padding:50px; color:#999;">Loading products...</div>
+        </div>
+    </div>
+
+    <script>
+        const userEmail = localStorage.getItem('userEmail');
+
+        window.onload = loadInventory;
+
+        async function loadInventory() {
+            try {
+                const res = await fetch(`http://localhost:5000/api/get-shop-all/${userEmail}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    const list = document.getElementById('full-inventory-list');
+                    list.innerHTML = data.products.length ? "" : "<p style='text-align:center; padding:40px;'>Your inventory is empty. Click 'Add New Product' to start.</p>";
+
+                    data.products.reverse().forEach(p => {
+                        const img = (p.images && p.images.length) ? p.images[0] : 'https://via.placeholder.com/60';
+                        const row = document.createElement('div');
+                        row.className = 'product-row';
+                        
+                        // Check if inStock is true or false
+                        const isInStock = p.inStock !== false;
+
+                        row.innerHTML = `
+                            <img src="${img}">
+                            <div>
+                                <h4 style="margin:0; color:#2f3542;">${p.name}</h4>
+                                <small style="color:#777;">${p.category || 'General'}</small>
+                            </div>
+                            <b style="color:#2f3542;">₹${p.price}</b>
+                            <div class="stock-info">
+                                <label class="switch">
+                                    <input type="checkbox" ${isInStock ? 'checked' : ''} onchange="toggleStock('${p._id}', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="stock-status ${isInStock ? 'status-in' : 'status-out'}">
+                                    ${isInStock ? 'In Stock' : 'Out of Stock'}
+                                </span>
+                            </div>
+                            <div class="btn-group">
+                                <button onclick="location.href='edit_product.html?id=${p._id}'" class="action-btn edit-btn" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteProduct('${p._id}')" class="action-btn del-btn" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        list.appendChild(row);
+                    });
+                }
+            } catch (err) {
+                console.error("Error:", err);
+            }
+        }
+
+        async function toggleStock(id, isChecked) {
+            try {
+                const res = await fetch('http://localhost:5000/api/toggle-stock', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ id: id, inStock: isChecked })
+                });
+                
+                if(res.ok) {
+                    // Update UI immediately without full reload for smoothness
+                    loadInventory();
+                }
+            } catch (err) {
+                alert("Stock update failed!");
+            }
+        }
+
+        async function deleteProduct(id) {
+            if(confirm("Bhai, pakka delete karna hai? Ye wapas nahi aayega!")) {
+                await fetch(`http://localhost:5000/api/delete-product/${id}`, { method: 'DELETE' });
+                loadInventory();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Local Cart | Shop Menu</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .product-card-zomato { 
+            background: white; padding: 15px; border-radius: 15px; margin-bottom: 15px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #f1f1f1;
+        }
+        /* Quantity Controls */
+        .qty-controls { display: flex; align-items: center; gap: 10px; background: #ff4757; color: white; border-radius: 8px; padding: 5px 10px; }
+        .qty-btn { cursor: pointer; font-weight: bold; font-size: 18px; padding: 0 5px; }
+        .add-btn { border: 1px solid #ff4757; color: #ff4757; background: white; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .add-btn:hover { background: #fff1f2; }
+
+        /* Floating Cart Strip */
+        .cart-strip { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 500px; background: #2ed573; color: white; 
+            padding: 15px 25px; border-radius: 15px; display: none; 
+            justify-content: space-between; align-items: center; z-index: 1000;
+            box-shadow: 0 10px 30px rgba(46, 213, 115, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+        @keyframes slideUp { from { bottom: -100px; } to { bottom: 20px; } }
+    </style>
+</head>
+<body style="background: #fdfdfd;">
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href='customer_dashboard.html'" style="cursor:pointer;">
+            <i class="fas fa-chevron-left"></i> Local<span>Cart</span>
+        </div>
+    </nav>
+
+    <div id="shop-header">
+        <div class="shop-banner" id="b-img" style="height:200px; background-size:cover; position:relative;">
+            <div style="position:absolute; bottom:0; width:100%; padding:20px; background:linear-gradient(transparent, rgba(0,0,0,0.8)); color:white;">
+                <h1 id="b-name">Loading...</h1>
+                <p id="b-deal"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 20px; padding-bottom: 100px;">
+        <h3 id="shop-title">Menu</h3>
+        <div id="item-list" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="cart-strip" id="cart-strip">
+        <div id="cart-info">
+            <span id="item-count">0</span> Items | ₹<span id="total-amount">0</span>
+        </div>
+        <div onclick="checkout()" style="cursor:pointer; font-weight:bold;">
+            Checkout <i class="fas fa-arrow-right"></i>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const shopEmail = params.get('email');
+        
+        // Cart Structure: { "Product Name": { price: 100, qty: 1 } }
+        let cart = JSON.parse(localStorage.getItem('myCart')) || {};
+
+        window.onload = async () => {
+            if(!shopEmail) return window.location.href='customer_dashboard.html';
+            fetchShopData();
+            updateCartUI();
+        };
+
+        async function fetchShopData() {
+            const res = await fetch(`http://localhost:5000/api/get-shop-all/${shopEmail}`);
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('b-name').innerText = data.shop.name;
+                document.getElementById('b-deal').innerText = data.shop.dealIn;
+                document.getElementById('b-img').style.backgroundImage = `url('${data.shop.image}')`;
+                renderItems(data.products);
+            }
+        }
+
+        function renderItems(products) {
+            const list = document.getElementById('item-list');
+            list.innerHTML = "";
+            products.forEach(p => {
+                const isAdded = cart[p.name];
+                const div = document.createElement('div');
+                div.className = 'product-card-zomato';
+                div.innerHTML = `
+                    <div>
+                        <h4 style="margin-bottom:5px;">${p.name}</h4>
+                        <p style="font-weight:bold; color:#2f3542;">₹${p.price}</p>
+                    </div>
+                    <div id="btn-container-${p.name.replace(/\s+/g, '')}">
+                        ${isAdded ? getQtyControls(p.name, p.price) : `<button class="add-btn" onclick="addToCart('${p.name}', ${p.price})">ADD</button>`}
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function getQtyControls(name, price) {
+            return `
+                <div class="qty-controls">
+                    <span class="qty-btn" onclick="updateQty('${name}', ${price}, -1)">-</span>
+                    <span id="qty-${name.replace(/\s+/g, '')}">${cart[name].qty}</span>
+                    <span class="qty-btn" onclick="updateQty('${name}', ${price}, 1)">+</span>
+                </div>
+            `;
+        }
+
+        function addToCart(name, price) {
+            cart[name] = { price: price, qty: 1 };
+            saveAndRefresh(name, price);
+        }
+
+        function updateQty(name, price, change) {
+            cart[name].qty += change;
+            if(cart[name].qty <= 0) {
+                delete cart[name];
+            }
+            saveAndRefresh(name, price);
+        }
+
+        function saveAndRefresh(name, price) {
+            localStorage.setItem('myCart', JSON.stringify(cart));
+            const container = document.getElementById(`btn-container-${name.replace(/\s+/g, '')}`);
+            if(cart[name]) {
+                container.innerHTML = getQtyControls(name, price);
+            } else {
+                container.innerHTML = `<button class="add-btn" onclick="addToCart('${name}', ${price})">ADD</button>`;
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const strip = document.getElementById('cart-strip');
+            let totalQty = 0;
+            let totalAmt = 0;
+
+            for(let key in cart) {
+                totalQty += cart[key].qty;
+                totalAmt += (cart[key].qty * cart[key].price);
+            }
+
+            if(totalQty > 0) {
+                strip.style.display = "flex";
+                document.getElementById('item-count').innerText = totalQty;
+                document.getElementById('total-amount').innerText = totalAmt;
+            } else {
+                strip.style.display = "none";
+            }
+        }
+
+        function checkout() {
+            // Abhi ke liye bas alert, baad mein iska checkout page banayenge
+            alert("Bhai, Checkout page agle step mein banate hain!");
+        }
+    </script>
+</body>
+</html>

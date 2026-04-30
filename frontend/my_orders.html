@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Orders | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .orders-container { max-width: 800px; margin: 30px auto; padding: 20px; }
+        .order-card { 
+            background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; 
+            transition: 0.3s;
+        }
+        .order-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        
+        .order-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1.5px dashed #f1f2f6; padding-bottom: 15px; margin-bottom: 15px; 
+        }
+        .order-id { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #2f3542; }
+        .order-date { color: #a4b0be; font-size: 13px; margin-top: 4px; }
+        
+        /* Dynamic Status Badges */
+        .status-badge { 
+            padding: 6px 15px; border-radius: 50px; font-size: 11px; 
+            font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .status-pending { background: #fff1e0; color: #ff9f43; border: 1px solid #ffeaa7; }
+        .status-completed { background: #e3fcef; color: #2ed573; border: 1px solid #55efc4; }
+        
+        .order-items { margin: 15px 0; padding: 10px; background: #fdfdfd; border-radius: 10px; }
+        .item-row { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 8px; color: #2f3542; }
+        
+        .order-footer { 
+            border-top: 1px solid #f1f2f6; padding-top: 15px; 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
+        .grand-total { font-weight: 900; font-size: 20px; color: #ff4757; }
+        
+        .empty-orders { text-align: center; padding: 100px 20px; color: #ced4da; }
+        .refresh-btn { 
+            background: #f1f2f6; border: none; padding: 8px 15px; 
+            border-radius: 8px; cursor: pointer; color: #57606f; font-weight: bold;
+        }
+        .refresh-btn:hover { background: #dfe4ea; }
+    </style>
+</head>
+<body style="background: #f8f9fa;">
+
+    <nav class="navbar">
+        <div class="logo" onclick="location.href='customer_dashboard.html'" style="cursor:pointer;">Local<span>Cart</span></div>
+        <button class="logout-btn" onclick="location.href='customer_dashboard.html'"><i class="fas fa-arrow-left"></i> Back to Shop</button>
+    </nav>
+
+    <div class="orders-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <h2 style="margin:0; color: #2f3542;"><i class="fas fa-box"></i> Track My Orders</h2>
+            <button class="refresh-btn" onclick="fetchMyOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
+        </div>
+        
+        <div id="orders-list">
+            <div style="text-align:center; padding:50px; color: #a4b0be;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p style="margin-top:10px;">Checking database for your orders...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Backend update ke hisaab se hum 'Email' use kar rahe hain
+        const lastEmailUsed = localStorage.getItem('lastCustomerEmail'); 
+
+        window.onload = fetchMyOrders;
+
+        async function fetchMyOrders() {
+            const list = document.getElementById('orders-list');
+            
+            if (!lastEmailUsed) {
+                list.innerHTML = `
+                    <div class="empty-orders">
+                        <i class="fas fa-search fa-4x" style="margin-bottom:20px; opacity:0.5;"></i>
+                        <h3>No Email Found</h3>
+                        <p>Place an order first to see your history here.</p>
+                        <button class="main-btn" onclick="location.href='customer_dashboard.html'" style="width:auto; margin-top:20px;">Go Shopping</button>
+                    </div>`;
+                return;
+            }
+
+            try {
+                // API Call using Email
+                const res = await fetch(`http://localhost:5000/api/my-orders/${lastEmailUsed}`);
+                const data = await res.json();
+
+                if (!data.success || data.orders.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-orders">
+                            <i class="fas fa-shopping-basket fa-4x" style="margin-bottom:20px; opacity:0.5;"></i>
+                            <h3>No Orders Yet</h3>
+                            <p>Looks like you haven't ordered anything with <b>${lastEmailUsed}</b></p>
+                        </div>`;
+                    return;
+                }
+
+                list.innerHTML = "";
+                data.orders.forEach(order => {
+                    // Status badge logic
+                    const status = (order.status || 'Pending').toLowerCase();
+                    const statusClass = status === 'completed' ? 'status-completed' : 'status-pending';
+                    
+                    let itemsHtml = "";
+                    order.items.forEach(item => {
+                        itemsHtml += `
+                            <div class="item-row">
+                                <span><i class="fas fa-caret-right" style="color:#ff4757;"></i> ${item.name} (x${item.qty})</span>
+                                <span>₹${item.price * item.qty}</span>
+                            </div>`;
+                    });
+
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    card.innerHTML = `
+                        <div class="order-header">
+                            <div>
+                                <div class="order-id">ID: #${order._id.slice(-6).toUpperCase()}</div>
+                                <div class="order-date"><i class="far fa-calendar-alt"></i> ${new Date(order.orderDate).toLocaleString()}</div>
+                            </div>
+                            <span class="status-badge ${statusClass}">
+                                <i class="fas ${status === 'completed' ? 'fa-check-circle' : 'fa-clock'}"></i> ${order.status}
+                            </span>
+                        </div>
+                        <div class="order-items">
+                            ${itemsHtml}
+                        </div>
+                        <div class="order-footer">
+                            <div style="color:#747d8c; font-size:14px;">
+                                <i class="fas fa-truck"></i> Delivery to: <b>${order.customerName}</b>
+                            </div>
+                            <div style="text-align:right;">
+                                <small style="display:block; color:#a4b0be;">Total Paid</small>
+                                <span class="grand-total">₹${order.totalAmount}</span>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+
+            } catch (err) {
+                list.innerHTML = `
+                    <div style="text-align:center; padding:50px; color:#ff4757;">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <p>Server connection failed. Is your backend running?</p>
+                    </div>`;
+            }
+        }
+    </script>
+</body>
+</html>

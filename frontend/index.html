@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Cart | Join Us</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-section">
+            <div class="inner-content">
+                <h1>Local<span>Cart</span></h1>
+                <p>Bringing your local market to your doorstep.</p>
+            </div>
+            <ul class="floating-icons">
+                <li><i class="fas fa-shopping-cart"></i></li>
+                <li><i class="fas fa-bag-shopping"></i></li>
+                <li><i class="fas fa-store"></i></li>
+                <li><i class="fas fa-cart-plus"></i></li>
+            </ul>
+        </div>
+        <div class="form-section">
+            <div class="form-box">
+                <h2 id="form-title">Create Account</h2>
+                <form id="auth-form">
+                    <div class="role-container">
+                        <div class="radio-group">
+                            <input type="radio" name="role" value="customer" id="customer" checked>
+                            <label for="customer">
+                                <i class="fas fa-user"></i> Customer
+                            </label>
+
+                            <input type="radio" name="role" value="business" id="business">
+                            <label for="business">
+                                <i class="fas fa-store"></i> Business
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group" id="name-field">
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="Full Name" id="username">
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Email Address" id="email" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Password" id="password" required>
+                        <i class="fas fa-eye" id="togglePassword"></i>
+                    </div>
+                    <button type="submit" class="main-btn">Sign Up</button>
+                </form>
+                <p class="toggle-text">Already a member? <span id="toggle-link">Login</span></p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js" defer></script>
+</body>
+</html>

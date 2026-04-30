@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Product | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body style="background:#f4f7f6;">
+    <div class="container" style="max-width: 600px; margin-top: 50px;">
+        <section class="card">
+            <button onclick="location.href='manage_inventory.html'" style="background:none; border:none; cursor:pointer; color:#777; margin-bottom:15px; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i> Exit to Inventory
+            </button>
+            
+            <h3><i class="fas fa-plus-circle"></i> Add New Product</h3>
+            
+            <div id="msg-box" style="display:none; padding:15px; border-radius:8px; background:#d4edda; color:#155724; margin-bottom:15px; text-align:center; font-weight:bold;">
+                <i class="fas fa-check-circle"></i> Product listed successfully!
+            </div>
+
+            <form id="product-form">
+                <div class="input-group">
+                    <label>Product Name</label>
+                    <input type="text" id="p-name" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                </div>
+                <div class="input-group">
+                    <label>Price (₹)</label>
+                    <input type="number" id="p-price" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                </div>
+                <div class="input-group">
+                    <label>Category</label>
+                    <select id="p-category" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                        <option value="General">General</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Fashion">Fashion</option>
+                        <option value="Food">Food & Beverage</option>
+                        <option value="Grocery">Grocery</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Description</label>
+                    <textarea id="p-desc" rows="3" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;" placeholder="Brief details about the product..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Product Images</label>
+                    <input type="file" id="p-images-file" multiple accept="image/*" onchange="uploadImages()">
+                    <div id="p-status" style="font-size:12px; margin-top:5px; color: #2ed573; font-weight: bold;"></div>
+                    <input type="hidden" id="p-urls">
+                </div>
+                
+                <button type="submit" id="submit-btn" class="main-btn" style="width:100%; margin-top:15px; background:#2f3542; padding: 15px;">
+                    <i class="fas fa-cloud-upload-alt"></i> List Product
+                </button>
+            </form>
+
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+            
+            <button onclick="location.href='manage_inventory.html'" style="width:100%; background:#eee; color:#333; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                <i class="fas fa-chevron-left"></i> Go Back to Inventory
+            </button>
+        </section>
+    </div>
+
+    <script>
+        const userEmail = localStorage.getItem('userEmail');
+
+        async function uploadImages() {
+            const files = document.getElementById('p-images-file').files;
+            if(files.length === 0) return;
+
+            const formData = new FormData();
+            for(let f of files) formData.append('productImages', f);
+            
+            document.getElementById('p-status').innerText = "Uploading... ⏳";
+            
+            try {
+                const res = await fetch('http://localhost:5000/api/upload-multiple', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('p-urls').value = JSON.stringify(data.imageUrls);
+                    document.getElementById('p-status').innerText = "All images ready! ✅";
+                }
+            } catch (err) {
+                document.getElementById('p-status').innerText = "Upload failed! ❌";
+            }
+        }
+
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            const msgBox = document.getElementById('msg-box');
+
+            // Button ko disable kar rahe hain taaki double click na ho
+            submitBtn.innerText = "Adding... ⏳";
+            submitBtn.disabled = true;
+
+            const payload = {
+                shopEmail: userEmail,
+                name: document.getElementById('p-name').value,
+                price: document.getElementById('p-price').value,
+                category: document.getElementById('p-category').value,
+                description: document.getElementById('p-desc').value,
+                images: JSON.parse(document.getElementById('p-urls').value || "[]")
+            };
+
+            try {
+                const res = await fetch('http://localhost:5000/api/add-product', {
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) {
+                    // Success Msg dikhana aur form reset karna
+                    msgBox.style.display = "block";
+                    document.getElementById('product-form').reset();
+                    document.getElementById('p-status').innerText = "";
+                    document.getElementById('p-urls').value = "";
+                    
+                    // 4 second baad message hata dena
+                    setTimeout(() => { msgBox.style.display = "none"; }, 4000);
+                }
+            } catch (err) {
+                alert("Something went wrong!");
+            } finally {
+                submitBtn.innerText = "List Product";
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

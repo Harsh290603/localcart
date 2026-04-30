@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Local Cart | Edit Product</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .edit-container { max-width: 800px; margin: 30px auto; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 15px; }
+        .img-card { position: relative; border-radius: 10px; overflow: hidden; border: 2px solid #eee; background: #fff; height: 120px; }
+        .img-card img { width: 100%; height: 100%; object-fit: cover; }
+        .main-tag { position: absolute; top: 5px; left: 5px; background: #2ed573; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; z-index: 10; font-weight: bold;}
+        .del-btn { position: absolute; top: 5px; right: 5px; background: rgba(255, 71, 87, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #2f3542; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; transition: 0.3s; }
+        
+        #save-status { 
+            display: none; padding: 12px; border-radius: 8px; 
+            text-align: center; margin-bottom: 15px; font-weight: bold;
+            animation: slideDown 0.4s ease;
+        }
+        @keyframes slideDown { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform: translateY(0); } }
+    </style>
+</head>
+<body style="background:#f4f7f6;">
+
+    <nav class="navbar">
+        <div class="logo">Local<span>Cart</span> Business</div>
+        <div style="display: flex; gap: 10px;">
+            <a href="manage_inventory.html" style="color: white; text-decoration: none; font-size: 14px;"><i class="fas fa-boxes"></i> Inventory</a>
+        </div>
+    </nav>
+
+    <div class="edit-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <button onclick="location.href='manage_inventory.html'" style="background:none; border:none; cursor:pointer; color:#777; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <h2 style="margin:0; color: #2f3542;">Modify Product</h2>
+        </div>
+        <hr style="border:0; border-top:1px solid #eee; margin-bottom:20px;">
+
+        <div id="save-status"></div>
+
+        <form id="edit-form">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <div class="input-group">
+                    <label>Product Name</label>
+                    <input type="text" id="e-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Price (₹)</label>
+                    <input type="number" id="e-price" required>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Category</label>
+                <select id="e-category">
+                    <option value="General">General</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Grocery">Grocery</option>
+                    <option value="Food">Food & Beverage</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Description</label>
+                <textarea id="e-desc" rows="4"></textarea>
+            </div>
+
+            <div style="background: #fdfdfd; padding: 15px; border-radius: 10px; border: 1px dashed #ccc;">
+                <label style="font-weight: bold; display: block; margin-bottom: 10px;">Product Images</label>
+                <input type="file" id="e-new-images" multiple accept="image/*" onchange="uploadMoreImages()">
+                <div id="u-status" style="font-size:12px; margin-top:5px; color: #2ed573; font-weight: bold;"></div>
+                
+                <div id="current-images" class="img-grid"></div>
+            </div>
+            
+            <button type="submit" id="save-btn" class="main-btn" style="margin-top:30px; background:#2f3542; width: 100%; padding: 15px;">
+                <i class="fas fa-save"></i> Update Product
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:5000";
+        const params = new URLSearchParams(window.location.search);
+        
+        // Priority: 1. URL ID, 2. LocalStorage ID (Last edited)
+        let productId = params.get('id') || localStorage.getItem('lastEditedProductId');
+        let productImages = [];
+
+        window.onload = () => {
+            if(!productId) {
+                alert("Please select a product first!");
+                window.location.href = 'manage_inventory.html';
+                return;
+            }
+            // Save ID to local storage for persistence
+            localStorage.setItem('lastEditedProductId', productId);
+            fetchProductDetails();
+        };
+
+        async function fetchProductDetails() {
+            try {
+                // Backend route should handle getting single product by ID
+                const res = await fetch(`${API_BASE}/api/get-shop-all/${localStorage.getItem('userEmail')}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    // Find specific product from shop products list
+                    const p = data.products.find(item => item._id === productId);
+                    if(p) {
+                        document.getElementById('e-name').value = p.name;
+                        document.getElementById('e-price').value = p.price;
+                        document.getElementById('e-desc').value = p.description || '';
+                        document.getElementById('e-category').value = p.category || 'General';
+                        productImages = p.images || [];
+                        renderImages();
+                    }
+                }
+            } catch (err) { console.error("Load Error:", err); }
+        }
+
+        function renderImages() {
+            const container = document.getElementById('current-images');
+            container.innerHTML = "";
+            productImages.forEach((img, index) => {
+                const card = document.createElement('div');
+                card.className = 'img-card';
+                card.innerHTML = `
+                    ${index === 0 ? '<span class="main-tag">Main</span>' : ''}
+                    <img src="${img}">
+                    <button type="button" class="del-btn" onclick="removeImg(${index})"><i class="fas fa-times"></i></button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function uploadMoreImages() {
+            const fileInput = document.getElementById('e-new-images');
+            if (fileInput.files.length === 0) return;
+            const formData = new FormData();
+            for(let f of fileInput.files) formData.append('productImages', f);
+            
+            document.getElementById('u-status').innerText = "Uploading... ⏳";
+            try {
+                const res = await fetch(`${API_BASE}/api/upload-multiple`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.success) {
+                    productImages = [...productImages, ...data.imageUrls];
+                    renderImages();
+                    document.getElementById('u-status').innerText = "Done! ✅";
+                }
+            } catch (err) { alert("Upload failed"); }
+        }
+
+        function removeImg(index) {
+            productImages.splice(index, 1);
+            renderImages();
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('save-status');
+            const saveBtn = document.getElementById('save-btn');
+            
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Changes...';
+            saveBtn.disabled = true;
+
+            const payload = {
+                // Backend field must match what you send
+                productId: productId, 
+                name: document.getElementById('e-name').value,
+                price: document.getElementById('e-price').value,
+                category: document.getElementById('e-category').value,
+                description: document.getElementById('e-desc').value,
+                images: productImages
+            };
+
+            try {
+                // Ensure this route exists in your server.js
+                const res = await fetch(`${API_BASE}/api/update-product`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) {
+                    statusDiv.style.display = "block";
+                    statusDiv.style.background = "#d4edda";
+                    statusDiv.style.color = "#155724";
+                    statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Product Updated Successfully!';
+                    
+                    // Form data remains on screen. Just hide message after 3s.
+                    setTimeout(() => { statusDiv.style.display = "none"; }, 3000);
+                }
+            } catch (err) {
+                statusDiv.style.display = "block";
+                statusDiv.style.background = "#f8d7da";
+                statusDiv.style.color = "#721c24";
+                statusDiv.innerHTML = 'Error: Could not update product.';
+            } finally {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Product';
+                saveBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

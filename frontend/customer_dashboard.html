@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Local Cart | Explore Marketplace</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Marketplace Layout */
+        .marketplace-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+            padding-bottom: 50px;
+        }
+        
+        .shop-card {
+            background: white; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: 0.3s;
+            cursor: pointer; border: 1px solid #f1f2f6; position: relative;
+        }
+        .shop-card:hover { transform: translateY(-8px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        
+        .shop-banner { height: 180px; background-size: cover; background-position: center; position: relative; }
+        .shop-overlay { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 5px 12px; border-radius: 50px; font-size: 11px; font-weight: bold; color: #2ed573; }
+
+        .shop-info { padding: 20px; }
+        .shop-info h3 { margin: 0; color: #2f3542; font-size: 18px; }
+        .shop-info p { font-size: 14px; color: #747d8c; margin: 8px 0; }
+        
+        .shop-tag { 
+            display: inline-block; background: #fff1f2; color: #ff4757; 
+            padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        }
+
+        /* Nav Buttons */
+        .nav-btns-container { display: flex; align-items: center; gap: 15px; }
+        .orders-btn { background: #2f3542; color: white; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .orders-btn:hover { background: #ff4757; transform: scale(1.05); }
+
+        /* Search Header */
+        .market-header { background: white; padding: 40px 20px; border-radius: 0 0 30px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); text-align: center; margin-bottom: 30px; }
+        .search-container {
+            width: 100%; max-width: 600px; margin: 25px auto 0 auto;
+            display: flex; align-items: center; background: #f1f2f6; padding: 5px 15px; border-radius: 15px;
+        }
+        .search-container input { flex: 1; border: none; outline: none; background: transparent; padding: 12px; font-size: 16px; color: #2f3542; }
+        
+        .visit-btn { width: 100%; background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        .visit-btn:hover { background: #2f3542; }
+    </style>
+</head>
+<body style="background: #fdfdfd;">
+
+    <nav class="navbar">
+        <div class="logo" onclick="location.reload()" style="cursor:pointer;">Local<span>Cart</span></div>
+        <div class="nav-right nav-btns-container">
+            <span id="cust-name" style="font-weight: bold; color: #2f3542; display: none;">User</span>
+            
+            <button class="orders-btn" onclick="location.href='my_orders.html'">
+                <i class="fas fa-shopping-bag"></i> My Orders
+            </button>
+            
+            <button class="logout-btn" onclick="logout()" style="background: transparent; color: #ff4757; border: 1px solid #ff4757;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="market-header">
+        <h1>Local Marketplace</h1>
+        <p style="color: #a4b0be; margin-top: 5px;">Discover and support local businesses around you</p>
+        
+        <div class="search-container">
+            <i class="fas fa-search" style="color: #747d8c;"></i>
+            <input type="text" placeholder="Search for shops or categories..." id="shopSearch" oninput="filterShops()">
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="market-title" style="color: #2f3542;">Live Shops</h2>
+            <span id="shop-count" style="background: #f1f2f6; padding: 5px 15px; border-radius: 50px; font-size: 13px; font-weight: bold;">0 Stores Found</span>
+        </div>
+        
+        <div class="marketplace-grid" id="shops-list">
+            <div style="grid-column: 1/-1; text-align: center; padding: 50px;">
+                <i class="fas fa-spinner fa-spin fa-3x" style="color: #eee;"></i>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allShops = [];
+        const userName = localStorage.getItem('userName');
+        if(userName) {
+            document.getElementById('cust-name').style.display = "inline";
+            document.getElementById('cust-name').innerText = `Hi, ${userName}`;
+        }
+
+        window.onload = loadMarketplace;
+
+        async function loadMarketplace() {
+            try {
+                const res = await fetch('http://localhost:5000/api/all-shops');
+                const data = await res.json();
+
+                if(data.success) {
+                    allShops = data.shops;
+                    displayShops(allShops);
+                }
+            } catch (err) { 
+                console.error(err);
+                document.getElementById('shops-list').innerHTML = "<p>Failed to connect to server ❌</p>";
+            }
+        }
+
+        function displayShops(shops) {
+            const list = document.getElementById('shops-list');
+            document.getElementById('shop-count').innerText = `${shops.length} Stores Found`;
+            
+            if(shops.length === 0) {
+                list.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:50px;">
+                    <i class="fas fa-store-slash fa-4x" style="color:#eee; margin-bottom:15px;"></i>
+                    <h3 style="color:#ccc;">No shops are live right now.</h3>
+                </div>`;
+                return;
+            }
+
+            list.innerHTML = "";
+            shops.forEach(shop => {
+                const card = document.createElement('div');
+                card.className = 'shop-card';
+                card.onclick = () => window.location.href = `shop_view.html?email=${shop.ownerEmail}`;
+                
+                const img = shop.image || 'https://via.placeholder.com/400x200?text=Shop+Image';
+                
+                card.innerHTML = `
+                    <div class="shop-banner" style="background-image: url('${img}')">
+                        <div class="shop-overlay">● LIVE</div>
+                    </div>
+                    <div class="shop-info">
+                        <span class="shop-tag">${shop.dealIn || 'General'}</span>
+                        <h3 style="margin-top:10px;">${shop.name}</h3>
+                        <p><i class="fas fa-map-marker-alt" style="color:#ff4757;"></i> ${shop.address}</p>
+                        <button class="visit-btn">Visit Store</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function filterShops() {
+            const query = document.getElementById('shopSearch').value.toLowerCase();
+            const filtered = allShops.filter(s => 
+                s.name.toLowerCase().includes(query) || 
+                s.dealIn.toLowerCase().includes(query)
+            );
+            displayShops(filtered);
+        }
+
+        function logout() { 
+            if(confirm("Bhai, logout karna hai?")) {
+                localStorage.clear(); 
+                window.location.href='index.html'; 
+            }
+        }
+    </script>
+</body>
+</html>

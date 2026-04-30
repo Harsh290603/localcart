@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Checkout | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .checkout-container { max-width: 900px; margin: 30px auto; padding: 20px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
+        @media (max-width: 800px) { .checkout-container { grid-template-columns: 1fr; } }
+
+        .checkout-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; margin-bottom: 20px; }
+        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #2f3542; display: flex; align-items: center; gap: 10px; }
+        .section-title i { color: #ff4757; }
+
+        .user-badge { background: #f8f9fa; padding: 12px; border-radius: 10px; font-size: 13px; color: #57606f; margin-bottom: 20px; border-left: 4px solid #ff4757; display: flex; align-items: center; gap: 10px; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #57606f; }
+        .form-control { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 10px; outline: none; font-size: 15px; transition: 0.3s; }
+        .form-control:focus { border-color: #ff4757; background: #fffafa; }
+
+        .summary-card { background: #2f3542; color: white; padding: 25px; border-radius: 20px; position: sticky; top: 20px; height: fit-content; }
+        .summary-line { display: flex; justify-content: space-between; margin-bottom: 12px; opacity: 0.9; }
+        .total-line { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 15px; padding-top: 15px; font-size: 22px; font-weight: 800; display: flex; justify-content: space-between; }
+        
+        .place-order-btn { width: 100%; background: #2ed573; color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 25px; transition: 0.3s; box-shadow: 0 10px 20px rgba(46, 213, 115, 0.2); }
+        .place-order-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(46, 213, 115, 0.4); }
+    </style>
+</head>
+<body style="background: #fdfdfd;">
+
+    <nav class="navbar">
+        <div class="logo" onclick="location.href='customer_dashboard.html'" style="cursor:pointer;">Local<span>Cart</span></div>
+        <button class="logout-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back to Cart</button>
+    </nav>
+
+    <div class="checkout-container">
+        <div class="left-col">
+            <div class="checkout-card">
+                <div class="section-title"><i class="fas fa-user"></i> Customer Details</div>
+                
+                <div class="user-badge">
+                    <i class="fas fa-envelope"></i> 
+                    <span>Ordering from: <b id="display-email">...</b></span>
+                </div>
+
+                <div class="input-group">
+                    <label>Receiver's Name</label>
+                    <input type="text" id="c-name" class="form-control" placeholder="Enter name for delivery">
+                </div>
+                
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="c-phone" class="form-control" placeholder="10-digit mobile number">
+                </div>
+            </div>
+
+            <div class="checkout-card">
+                <div class="section-title"><i class="fas fa-map-marker-alt"></i> Delivery Address</div>
+                <div class="input-group">
+                    <label>Landmark</label>
+                    <input type="text" id="c-landmark" class="form-control" placeholder="e.g. Near Shiv Mandir">
+                </div>
+                <div class="input-group">
+                    <label>Full Address</label>
+                    <textarea id="c-address" class="form-control" rows="3" placeholder="Flat/House No, Street, Colony..."></textarea>
+                </div>
+            </div>
+
+            <div class="checkout-card">
+                <div class="section-title"><i class="fas fa-wallet"></i> Payment</div>
+                <div style="background: #e3fcef; color: #26af5a; padding: 15px; border-radius: 10px; font-weight: bold; border: 1px solid #55efc4;">
+                    <i class="fas fa-money-bill-wave"></i> Cash on Delivery (COD)
+                </div>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="summary-card">
+                <h3 style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Order Summary</h3>
+                <div id="summary-items-list"></div>
+                <div class="summary-line" style="margin-top:20px;">
+                    <span>Total Amount</span>
+                    <span id="grand-total" style="font-size: 24px; font-weight: 900;">₹0</span>
+                </div>
+
+                <button class="place-order-btn" id="placeOrderBtn" onclick="placeFinalOrder()">
+                    Confirm & Place Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const loggedInEmail = localStorage.getItem('userEmail');
+
+        window.onload = () => {
+            if(!loggedInEmail) {
+                alert("Please login to continue!");
+                location.href = 'index.html';
+                return;
+            }
+            if(cart.length === 0) location.href = 'customer_dashboard.html';
+
+            document.getElementById('display-email').innerText = loggedInEmail;
+            renderSummary();
+        };
+
+        function renderSummary() {
+            const list = document.getElementById('summary-items-list');
+            let total = 0;
+            list.innerHTML = "";
+            
+            cart.forEach(item => {
+                total += (item.price * item.qty);
+                const div = document.createElement('div');
+                div.className = 'summary-line';
+                div.innerHTML = `<span>${item.name} x ${item.qty}</span> <span>₹${item.price * item.qty}</span>`;
+                list.appendChild(div);
+            });
+            document.getElementById('grand-total').innerText = `₹${total}`;
+        }
+
+        async function placeFinalOrder() {
+            const name = document.getElementById('c-name').value;
+            const phone = document.getElementById('c-phone').value;
+            const landmark = document.getElementById('c-landmark').value;
+            const address = document.getElementById('c-address').value;
+            const btn = document.getElementById('placeOrderBtn');
+
+            if(!name || !phone || !address) {
+                alert("Bhai, Delivery details toh bhar do!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Processing Your Order...";
+
+            const payload = {
+                customerName: name,
+                customerEmail: loggedInEmail, // Backend track email se karega
+                customerPhone: phone,
+                customerAddress: `${address} (Landmark: ${landmark})`,
+                items: cart,
+                totalAmount: cart.reduce((sum, i) => sum + (i.price * i.qty), 0),
+                status: 'Pending'
+            };
+
+            try {
+                const res = await fetch('http://localhost:5000/api/place-order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) {
+                    localStorage.setItem('lastCustomerEmail', loggedInEmail);
+                    alert("🎉 Order Successful!");
+                    localStorage.removeItem('cart');
+                    location.href = 'my_orders.html';
+                }
+            } catch (err) {
+                alert("Order fail ho gaya!");
+                btn.disabled = false;
+                btn.innerText = "Confirm & Place Order";
+            }
+        }
+    </script>
+</body>
+</html>

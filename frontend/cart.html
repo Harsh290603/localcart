@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Cart | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .cart-container { max-width: 800px; margin: 30px auto; padding: 20px; }
+        .shop-group { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        
+        .shop-name-header { 
+            border-bottom: 2px solid #f8f9fa; padding-bottom: 12px; margin-bottom: 18px; 
+            color: #ff4757; display: flex; align-items: center; gap: 12px; 
+            font-weight: 800; font-size: 20px;
+        }
+        
+        .cart-item { display: grid; grid-template-columns: 70px 1fr 120px 100px 40px; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .cart-item img { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; }
+        
+        .qty-control { display: flex; align-items: center; gap: 10px; background: #f1f2f6; border-radius: 8px; padding: 5px 10px; justify-content: center; }
+        .qty-btn { border: none; background: none; cursor: pointer; font-weight: bold; font-size: 18px; color: #2f3542; width: 25px; }
+        .qty-btn:hover { color: #ff4757; }
+
+        .checkout-section { 
+            display: none; background: white; padding: 30px; border-radius: 20px; 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); margin-top: 20px; border: 1px solid #eee;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+        .summary-box { background: #f8f9fa; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }
+        
+        .main-input { width: 100%; margin-bottom: 15px; padding: 14px; border: 1.5px solid #eee; border-radius: 12px; outline: none; font-size: 15px; }
+        .main-input:focus { border-color: #ff4757; }
+
+        .proceed-btn { width: 100%; background: #2f3542; color: white; padding: 18px; border-radius: 15px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; }
+        .proceed-btn:hover { background: #ff4757; }
+        
+        .back-btn { background: none; border: none; color: #777; cursor: pointer; font-weight: bold; margin-bottom: 20px; display: none; }
+        .user-info-tag { background: #f1f2f6; padding: 10px; border-radius: 10px; font-size: 13px; margin-bottom: 15px; color: #57606f; }
+    </style>
+</head>
+<body style="background: #fdfdfd;">
+
+    <nav class="navbar">
+        <div class="logo" onclick="location.href='customer_dashboard.html'" style="cursor:pointer;">Local<span>Cart</span></div>
+        <button class="logout-btn" onclick="history.back()">Back to Market</button>
+    </nav>
+
+    <div class="cart-container">
+        <button id="step-back-btn" class="back-btn" onclick="goBackToCart()"><i class="fas fa-arrow-left"></i> Edit Cart Items</button>
+        
+        <h1 id="page-title" style="color:#2f3542; margin-bottom: 20px;">Your Shopping Cart</h1>
+
+        <div id="cart-content"></div>
+
+        <button id="proceed-step-btn" class="proceed-btn" onclick="showCheckout()">
+            Proceed to Checkout <i class="fas fa-arrow-right"></i>
+        </button>
+
+        <div class="checkout-section" id="checkout-form">
+            <h3 style="margin-bottom: 15px;"><i class="fas fa-truck"></i> Delivery Details</h3>
+            
+            <div class="user-info-tag">
+                <i class="fas fa-user-circle"></i> Ordering as: <b id="display-email">...</b>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-row"><span>Items Total:</span> <span id="total-price">₹0</span></div>
+                <div class="summary-row"><span>Delivery Charges:</span> <span style="color:#2ed573; font-weight:bold;">₹40</span></div>
+                <hr style="border:0; border-top:1px solid #ddd; margin:15px 0;">
+                <div class="summary-row" style="font-weight:900; font-size:22px;">
+                    <span>Grand Total:</span> <span id="grand-total">₹0</span>
+                </div>
+            </div>
+            
+            <input type="text" id="cust-name" placeholder="Receiver's Name" class="main-input">
+            <input type="tel" id="cust-phone" placeholder="10-Digit Mobile Number" class="main-input">
+            <textarea id="cust-addr" placeholder="Full Address (House No, Street, Landmark)" rows="3" class="main-input" style="font-family:inherit; resize:none;"></textarea>
+
+            <button class="proceed-btn" id="placeOrderBtn" style="background:#2ed573;" onclick="placeOrder()">
+                Confirm Order (COD)
+            </button>
+        </div>
+
+        <div id="empty-cart" style="text-align:center; padding:80px 20px; display:none;">
+            <i class="fas fa-shopping-basket" style="font-size:60px; color:#ddd; margin-bottom:20px;"></i>
+            <h2>Cart is empty</h2>
+            <button class="main-btn" onclick="location.href='customer_dashboard.html'" style="width:auto; padding:10px 30px;">Shop Now</button>
+        </div>
+    </div>
+
+    <script>
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const loggedInEmail = localStorage.getItem('userEmail');
+        const loggedInName = localStorage.getItem('userName');
+
+        window.onload = () => {
+            if(!loggedInEmail) {
+                alert("Bhai login toh kar lo pehle!");
+                location.href = 'index.html';
+                return;
+            }
+            document.getElementById('display-email').innerText = loggedInEmail;
+            renderCart();
+        };
+
+        function renderCart() {
+            const container = document.getElementById('cart-content');
+            const proceedBtn = document.getElementById('proceed-step-btn');
+            const empty = document.getElementById('empty-cart');
+
+            if(cart.length === 0) {
+                container.innerHTML = "";
+                proceedBtn.style.display = "none";
+                empty.style.display = "block";
+                return;
+            }
+
+            empty.style.display = "none";
+            proceedBtn.style.display = "block";
+            container.innerHTML = "";
+
+            const groups = {};
+            cart.forEach(item => {
+                const store = item.shopName || "Local Store";
+                if(!groups[store]) groups[store] = [];
+                groups[store].push(item);
+            });
+
+            for(let storeName in groups) {
+                const shopDiv = document.createElement('div');
+                shopDiv.className = 'shop-group';
+                let itemsHtml = `<div class="shop-name-header"><i class="fas fa-store"></i> ${storeName}</div>`;
+                groups[storeName].forEach(item => {
+                    itemsHtml += `
+                        <div class="cart-item">
+                            <img src="${item.images[0] || 'https://via.placeholder.com/60'}">
+                            <div>
+                                <h4 style="margin:0;">${item.name}</h4>
+                                <small style="color:#777;">₹${item.price}</small>
+                            </div>
+                            <div class="qty-control">
+                                <button class="qty-btn" onclick="updateQty('${item._id}', -1)">-</button>
+                                <b>${item.qty}</b>
+                                <button class="qty-btn" onclick="updateQty('${item._id}', 1)">+</button>
+                            </div>
+                            <b style="text-align:right;">₹${item.price * item.qty}</b>
+                            <button onclick="removeItem('${item._id}')" style="background:none; border:none; color:#ff4757; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                });
+                shopDiv.innerHTML = itemsHtml;
+                container.appendChild(shopDiv);
+            }
+        }
+
+        function updateQty(id, change) {
+            const item = cart.find(i => i._id === id);
+            if(item) {
+                item.qty += change;
+                if(item.qty < 1) return removeItem(id);
+                localStorage.setItem('cart', JSON.stringify(cart));
+                renderCart();
+            }
+        }
+
+        function removeItem(id) {
+            if(confirm("Item hata dein?")) {
+                cart = cart.filter(i => i._id !== id);
+                localStorage.setItem('cart', JSON.stringify(cart));
+                renderCart();
+            }
+        }
+
+        function showCheckout() {
+            const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            document.getElementById('total-price').innerText = `₹${total}`;
+            document.getElementById('grand-total').innerText = `₹${total + 40}`;
+            
+            document.getElementById('cart-content').style.display = "none";
+            document.getElementById('proceed-step-btn').style.display = "none";
+            document.getElementById('checkout-form').style.display = "block";
+            document.getElementById('step-back-btn').style.display = "block";
+            document.getElementById('page-title').innerText = "Delivery Details";
+        }
+
+        function goBackToCart() {
+            document.getElementById('cart-content').style.display = "block";
+            document.getElementById('proceed-step-btn').style.display = "block";
+            document.getElementById('checkout-form').style.display = "none";
+            document.getElementById('step-back-btn').style.display = "none";
+            document.getElementById('page-title').innerText = "Your Shopping Cart";
+        }
+
+        async function placeOrder() {
+            const name = document.getElementById('cust-name').value;
+            const phone = document.getElementById('cust-phone').value;
+            const addr = document.getElementById('cust-addr').value;
+            const btn = document.getElementById('placeOrderBtn');
+
+            if(!name || !phone || !addr) return alert("Pura details bhariye bhai!");
+
+            btn.innerText = "Placing Order...";
+            btn.disabled = true;
+
+            const payload = {
+                customerName: name,
+                customerEmail: loggedInEmail, // Auto Email
+                customerPhone: phone,
+                customerAddress: addr,
+                items: cart,
+                totalAmount: cart.reduce((sum, i) => sum + (i.price * i.qty), 0) + 40,
+                status: 'Pending'
+            };
+
+            try {
+                const res = await fetch('http://localhost:5000/api/place-order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if(res.ok) {
+                    localStorage.setItem('lastCustomerEmail', loggedInEmail);
+                    alert("🎉 Order Successful! History page par track karein.");
+                    localStorage.removeItem('cart');
+                    location.href = 'my_orders.html';
+                } else {
+                    alert("Order fail ho gaya. Backend check karein.");
+                    btn.innerText = "Confirm Order (COD)";
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert("Server Connection Error!");
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
