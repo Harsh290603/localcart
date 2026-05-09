@@ -1,21 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
     
+    // --- 1. PERSISTENCE CHECK (Auto-Login Logic) ---
+    const savedEmail = localStorage.getItem('userEmail');
+    const savedRole = localStorage.getItem('userRole');
+
+    if (savedEmail && savedRole) {
+        // Agar data mil gaya, toh bina login form dikhaye redirect karein
+        if (savedRole === 'business') {
+            window.location.href = 'business_dashboard.html';
+        } else {
+            window.location.href = 'customer_dashboard.html';
+        }
+        return; // Script ko yahan stop kar do taaki baaki form logic load na ho
+    }
+
+    // --- 2. EXISTING SELECTORS ---
     const authForm = document.getElementById('auth-form');
     const toggleLink = document.getElementById('toggle-link');
     const formTitle = document.getElementById('form-title');
     const nameField = document.getElementById('name-field');
     const mainBtn = document.querySelector('.main-btn');
-    
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
 
-    let isLogin = false; 
+    let isLogin = true; 
 
     // --- CONFIGURATION ---
-    // Aapka Render Backend URL yahan set kar diya hai
     const API_BASE_URL = 'https://localcart-c6il.onrender.com'; 
 
-    // 1. PASSWORD SHOW/HIDE LOGIC
+    // 3. PASSWORD SHOW/HIDE LOGIC
     togglePassword.addEventListener('click', function () {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
@@ -23,23 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
         this.classList.toggle('fa-eye');
     });
 
-    // 2. TOGGLE LOGIN/SIGNUP UI LOGIC
-    toggleLink.addEventListener('click', () => {
+    // 4. TOGGLE LOGIN/SIGNUP UI LOGIC
+    function handleToggle() {
         isLogin = !isLogin;
+        const toggleWrapper = document.getElementById('toggle-wrapper');
+
         if (isLogin) {
             formTitle.innerText = "Welcome Back";
             nameField.style.display = "none";
             mainBtn.innerText = "Login";
-            toggleLink.innerText = "Create Account";
+            toggleWrapper.innerHTML = 'New here? <span id="toggle-link" style="cursor: pointer; color: var(--primary-color); font-weight: 600;">Create Account</span>';
         } else {
             formTitle.innerText = "Create Account";
             nameField.style.display = "block";
             mainBtn.innerText = "Sign Up";
-            toggleLink.innerText = "Login";
+            toggleWrapper.innerHTML = 'Already a member? <span id="toggle-link" style="cursor: pointer; color: var(--primary-color); font-weight: 600;">Login</span>';
         }
-    });
+        // Re-attach listener because innerHTML wipes it
+        document.getElementById('toggle-link').addEventListener('click', handleToggle);
+    }
 
-    // 3. SUBMIT HANDLER (Backend Call)
+    toggleLink.addEventListener('click', handleToggle);
+
+    // 5. SUBMIT HANDLER
     authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -58,10 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
             payload.username = username;
         }
 
-        // Updated: Ab ye localhost ki jagah Render URL use karega
         const url = isLogin ? `${API_BASE_URL}/login` : `${API_BASE_URL}/signup`;
 
-        // Loading state
         mainBtn.innerText = isLogin ? "Logging in... ⏳" : "Signing up... ⏳";
         mainBtn.disabled = true;
 
@@ -75,20 +92,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (response.ok) {
-                // --- DATA PERSISTENCE ---
+                // Save data for persistence
                 localStorage.setItem('userEmail', email); 
+                localStorage.setItem('userRole', role); // Role ko manually save kar rahe hain redirection ke liye
                 
-                if (data.user) {
+                if (data.user && data.user.username) {
                     localStorage.setItem('userName', data.user.username);
-                    localStorage.setItem('userRole', data.user.role);
                 } else if (!isLogin) {
                     localStorage.setItem('userName', payload.username);
-                    localStorage.setItem('userRole', payload.role);
                 }
 
                 alert(data.message);
 
-                // Redirect Logic
                 if (isLogin) {
                     if (role === 'business') {
                         window.location.href = 'business_dashboard.html';
@@ -96,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.location.href = 'customer_dashboard.html';
                     }
                 } else {
-                    // Signup ke baad refresh karke Login mode dikhao
                     alert("Account created! Please login now.");
                     location.reload(); 
                 }
@@ -107,8 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Auth Error:", error);
-            // Hint: Render free tier pe thoda time leta hai "wake up" hone mein
-            alert("Backend server error! Agar server start nahi hua hai toh 30-40 seconds wait karke dubara try karein.");
+            alert("Backend server error! Server wake up hone mein 30-40 seconds le sakta hai.");
         } finally {
             mainBtn.disabled = false;
             mainBtn.innerText = isLogin ? "Login" : "Sign Up";

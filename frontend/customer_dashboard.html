@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local Cart | Explore Marketplace</title>
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -49,6 +50,21 @@
         
         .visit-btn { width: 100%; background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; margin-top: 10px; transition: 0.3s; }
         .visit-btn:hover { background: #2f3542; }
+
+        .logout-btn {
+            background: transparent; 
+            color: #ff4757; 
+            border: 1px solid #ff4757;
+            padding: 8px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .logout-btn:hover {
+            background: #ff4757;
+            color: white;
+        }
     </style>
 </head>
 <body style="background: #fdfdfd;">
@@ -62,7 +78,7 @@
                 <i class="fas fa-shopping-bag"></i> My Orders
             </button>
             
-            <button class="logout-btn" onclick="logout()" style="background: transparent; color: #ff4757; border: 1px solid #ff4757;">Logout</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </nav>
 
@@ -85,27 +101,38 @@
         <div class="marketplace-grid" id="shops-list">
             <div style="grid-column: 1/-1; text-align: center; padding: 50px;">
                 <i class="fas fa-spinner fa-spin fa-3x" style="color: #eee;"></i>
+                <p>Connecting to server...</p>
             </div>
         </div>
     </div>
 
-  <script>
-        let allShops = [];
+    <script>
+        // --- 1. SECURITY & PERSISTENCE CHECK ---
+        const userEmail = localStorage.getItem('userEmail');
+        const userRole = localStorage.getItem('userRole');
         const userName = localStorage.getItem('userName');
-        
-        // --- CONFIGURATION ---
-        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
-        if(userName) {
-            document.getElementById('cust-name').style.display = "inline";
-            document.getElementById('cust-name').innerText = `Hi, ${userName}`;
+        // Check if user is logged in AND is a customer
+        if (!userEmail || userRole !== 'customer') {
+            window.location.replace('index.html'); // Back button prevent karne ke liye replace use kiya
         }
+
+        // Display user name
+        if(userName) {
+            const nameEl = document.getElementById('cust-name');
+            nameEl.style.display = "inline";
+            nameEl.innerText = `Hi, ${userName}`;
+        }
+
+        let allShops = [];
+        const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = loadMarketplace;
 
+        // --- 2. LOAD MARKETPLACE DATA ---
         async function loadMarketplace() {
+            const list = document.getElementById('shops-list');
             try {
-                // Updated: Localhost ki jagah Render URL use kiya
                 const res = await fetch(`${API_BASE_URL}/api/all-shops`);
                 const data = await res.json();
 
@@ -115,14 +142,17 @@
                 }
             } catch (err) { 
                 console.error("Marketplace Load Error:", err);
-                document.getElementById('shops-list').innerHTML = `
+                list.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 50px;">
+                        <i class="fas fa-plug fa-3x" style="color: #ff4757; margin-bottom: 15px;"></i>
                         <p>Connecting to server... ⏳</p>
-                        <small style="color: #747d8c;">Render server thoda time le sakta hai start hone mein.</small>
+                        <small style="color: #747d8c;">Render server takes 30-40s to wake up on first load.</small>
+                        <br><button onclick="loadMarketplace()" style="margin-top:15px; padding:8px 15px; cursor:pointer; border-radius:8px; border:none; background:#2f3542; color:white;">Retry</button>
                     </div>`;
             }
         }
 
+        // --- 3. DISPLAY LOGIC ---
         function displayShops(shops) {
             const list = document.getElementById('shops-list');
             document.getElementById('shop-count').innerText = `${shops.length} Stores Found`;
@@ -141,7 +171,6 @@
                 card.className = 'shop-card';
                 card.onclick = () => window.location.href = `shop_view.html?email=${shop.ownerEmail}`;
                 
-                // Image handling: Agar shop image hai toh thik, warna placeholder
                 const img = shop.image || 'https://via.placeholder.com/400x200?text=Shop+Image';
                 
                 card.innerHTML = `
@@ -159,19 +188,22 @@
             });
         }
 
+        // --- 4. SEARCH FILTER ---
         function filterShops() {
             const query = document.getElementById('shopSearch').value.toLowerCase();
             const filtered = allShops.filter(s => 
                 s.name.toLowerCase().includes(query) || 
-                (s.dealIn && s.dealIn.toLowerCase().includes(query))
+                (s.dealIn && s.dealIn.toLowerCase().includes(query)) ||
+                (s.address && s.address.toLowerCase().includes(query))
             );
             displayShops(filtered);
         }
 
+        // --- 5. LOGOUT LOGIC ---
         function logout() { 
-            if(confirm("Bhai, logout karna hai?")) {
-                localStorage.clear(); 
-                window.location.href='index.html'; 
+            if(confirm("Are you sure you want to logout?")) {
+                localStorage.clear(); // Saara data clear karein
+                window.location.replace('index.html'); // Redirect and prevent back action
             }
         }
     </script>

@@ -23,10 +23,13 @@
         </div>
         <div class="form-section">
             <div class="form-box">
-                <h2 id="form-title">Create Account</h2>
+                <!-- Changed to Login Title by default -->
+                <h2 id="form-title">Welcome Back</h2>
+                
                 <form id="auth-form">
                     <div class="role-container">
                         <div class="radio-group">
+                            <!-- Customer is checked by default -->
                             <input type="radio" name="role" value="customer" id="customer" checked>
                             <label for="customer">
                                 <i class="fas fa-user"></i> Customer
@@ -39,22 +42,31 @@
                         </div>
                     </div>
                     
-                    <div class="input-group" id="name-field">
+                    <!-- Hidden by default for Login view -->
+                    <div class="input-group" id="name-field" style="display: none;">
                         <i class="fas fa-user"></i>
                         <input type="text" placeholder="Full Name" id="username">
                     </div>
+
                     <div class="input-group">
                         <i class="fas fa-envelope"></i>
                         <input type="email" placeholder="Email Address" id="email" required>
                     </div>
+
                     <div class="input-group">
                         <i class="fas fa-lock"></i>
                         <input type="password" placeholder="Password" id="password" required>
                         <i class="fas fa-eye" id="togglePassword"></i>
                     </div>
-                    <button type="submit" class="main-btn">Sign Up</button>
+
+                    <!-- Button text set to Login -->
+                    <button type="submit" class="main-btn" id="submit-btn">Login</button>
                 </form>
-                <p class="toggle-text">Already a member? <span id="toggle-link">Login</span></p>
+
+                <!-- Toggle text updated for Login state -->
+                <p class="toggle-text" id="toggle-wrapper">
+                    New here? <span id="toggle-link" style="cursor: pointer; color: var(--primary-color); font-weight: 600;">Create Account</span>
+                </p>
             </div>
         </div>
     </div>
