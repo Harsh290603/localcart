@@ -178,6 +178,17 @@
             }
         }
 
+        // --- NEW AUTOFILL LOGIC ---
+        function autofillDetails() {
+            const savedName = localStorage.getItem('userName');
+            const savedPhone = localStorage.getItem('userPhone');
+            const savedAddress = localStorage.getItem('userAddress');
+
+            if (savedName) document.getElementById('cust-name').value = savedName;
+            if (savedPhone) document.getElementById('cust-phone').value = savedPhone;
+            if (savedAddress) document.getElementById('cust-addr').value = savedAddress;
+        }
+
         function showCheckout() {
             const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
             document.getElementById('total-price').innerText = `₹${total}`;
@@ -188,6 +199,9 @@
             document.getElementById('checkout-form').style.display = "block";
             document.getElementById('step-back-btn').style.display = "block";
             document.getElementById('page-title').innerText = "Delivery Details";
+
+            // Checkout section dikhate hi data auto-fill ho jayega
+            autofillDetails();
         }
 
         function goBackToCart() {
@@ -220,7 +234,6 @@
             };
 
             try {
-                // Updated: Localhost hata kar Render URL connect kiya
                 const res = await fetch(`${API_BASE_URL}/api/place-order`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
