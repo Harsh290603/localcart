@@ -50,3 +50,47 @@ body { background: var(--bg); color: var(--dark); }
 .item:hover { background: #f9f9f9; }
 
 @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* --- NEW: PROFILE ICON & DROPDOWN --- */
+.profile-dropdown { position: relative; display: inline-block; }
+
+.profile-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--dark); color: white;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; font-size: 18px; box-shadow: var(--shadow);
+    transition: 0.3s; border: 2px solid white;
+}
+.profile-icon:hover { transform: scale(1.05); }
+
+.dropdown-menu {
+    display: none; position: absolute; right: 0; top: 55px;
+    background: white; min-width: 200px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-radius: 12px; overflow: hidden; z-index: 1000;
+    border: 1px solid var(--border); animation: slideDown 0.2s ease;
+}
+.dropdown-menu.show { display: block; }
+
+.dropdown-header { padding: 15px; background: #fdfdfd; border-bottom: 1px solid #eee; text-align: center; }
+.dropdown-header h4 { margin: 0; color: var(--dark); font-size: 15px; }
+.dropdown-header small { color: #747d8c; font-size: 12px; }
+
+.dropdown-menu a {
+    display: block; padding: 12px 20px; text-decoration: none;
+    color: var(--dark); font-weight: 500; transition: 0.2s; font-size: 14px;
+}
+.dropdown-menu a:hover { background: #f8f9fa; color: var(--primary); padding-left: 25px; }
+.dropdown-menu a i { margin-right: 10px; width: 15px; text-align: center; }
+
+/* --- NEW: INFO MODAL --- */
+.info-modal { 
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; 
+}
+.info-modal-content { 
+    background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 400px; 
+    animation: scaleUp 0.3s ease; box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }

@@ -35,11 +35,6 @@
             padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase;
         }
 
-        /* Nav Buttons */
-        .nav-btns-container { display: flex; align-items: center; gap: 15px; }
-        .orders-btn { background: #2f3542; color: white; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .orders-btn:hover { background: #ff4757; transform: scale(1.05); }
-
         /* Search Header */
         .market-header { background: white; padding: 40px 20px; border-radius: 0 0 30px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); text-align: center; margin-bottom: 30px; }
         .search-container {
@@ -50,37 +45,53 @@
         
         .visit-btn { width: 100%; background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; margin-top: 10px; transition: 0.3s; }
         .visit-btn:hover { background: #2f3542; }
-
-        .logout-btn {
-            background: transparent; 
-            color: #ff4757; 
-            border: 1px solid #ff4757;
-            padding: 8px 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        .logout-btn:hover {
-            background: #ff4757;
-            color: white;
-        }
     </style>
 </head>
 <body style="background: #fdfdfd;">
 
     <nav class="navbar">
         <div class="logo" onclick="location.reload()" style="cursor:pointer;">Local<span>Cart</span></div>
-        <div class="nav-right nav-btns-container">
-            <span id="cust-name" style="font-weight: bold; color: #2f3542; display: none;">User</span>
+        <div class="nav-right">
             
-            <button class="orders-btn" onclick="location.href='my_orders.html'">
-                <i class="fas fa-shopping-bag"></i> My Orders
-            </button>
-            
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div class="profile-dropdown">
+                <div class="profile-icon" onclick="toggleProfileMenu()">
+                    <i class="fas fa-user"></i>
+                </div>
+                
+                <div class="dropdown-menu" id="profileDropdown">
+                    <div class="dropdown-header">
+                        <h4 id="drop-name">User</h4>
+                        <small id="drop-email">user@email.com</small>
+                    </div>
+                    <a href="#" onclick="openInfoModal()"><i class="fas fa-user-edit"></i> Personal Info</a>
+                    <a href="my_orders.html"><i class="fas fa-shopping-bag"></i> My Orders</a>
+                    <hr style="border:0; border-top:1px solid #eee; margin:0;">
+                    <a href="#" onclick="logout()" style="color: #ff4757;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+
         </div>
     </nav>
+
+    <div class="info-modal" id="infoModal">
+        <div class="info-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Personal Info</h3>
+                <i class="fas fa-times" style="cursor:pointer; font-size:20px; color:#777;" onclick="closeInfoModal()"></i>
+            </div>
+            <div class="input-group">
+                <label style="font-weight:bold; font-size:12px; color:#777;">Phone Number</label>
+                <input type="text" id="userPhone" placeholder="Enter mobile number" style="margin-top:5px;">
+            </div>
+            <div class="input-group">
+                <label style="font-weight:bold; font-size:12px; color:#777;">Default Delivery Address</label>
+                <textarea id="userAddress" rows="3" placeholder="Enter your full address" style="margin-top:5px;"></textarea>
+            </div>
+            <button onclick="savePersonalInfo()" class="main-btn" style="width: 100%; background: #2f3542;">
+                Save Details
+            </button>
+        </div>
+    </div>
 
     <div class="market-header">
         <h1>Local Marketplace</h1>
@@ -112,24 +123,54 @@
         const userRole = localStorage.getItem('userRole');
         const userName = localStorage.getItem('userName');
 
-        // Check if user is logged in AND is a customer
         if (!userEmail || userRole !== 'customer') {
-            window.location.replace('index.html'); // Back button prevent karne ke liye replace use kiya
+            window.location.replace('index.html');
         }
 
-        // Display user name
-        if(userName) {
-            const nameEl = document.getElementById('cust-name');
-            nameEl.style.display = "inline";
-            nameEl.innerText = `Hi, ${userName}`;
+        // --- PROFILE DROPDOWN LOGIC ---
+        if(userName) document.getElementById('drop-name').innerText = userName;
+        if(userEmail) document.getElementById('drop-email').innerText = userEmail;
+
+        function toggleProfileMenu() {
+            document.getElementById('profileDropdown').classList.toggle('show');
         }
 
+        window.onclick = function(event) {
+            if (!event.target.matches('.profile-icon') && !event.target.matches('.fa-user')) {
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown && dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        }
+
+        // --- PERSONAL INFO MODAL LOGIC ---
+        function openInfoModal() {
+            document.getElementById('infoModal').style.display = 'flex';
+            document.getElementById('userPhone').value = localStorage.getItem('userPhone') || '';
+            document.getElementById('userAddress').value = localStorage.getItem('userAddress') || '';
+            document.getElementById('profileDropdown').classList.remove('show'); // Close dropdown when modal opens
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoModal').style.display = 'none';
+        }
+
+        function savePersonalInfo() {
+            const phone = document.getElementById('userPhone').value;
+            const address = document.getElementById('userAddress').value;
+            localStorage.setItem('userPhone', phone);
+            localStorage.setItem('userAddress', address);
+            alert("Personal Info saved successfully!");
+            closeInfoModal();
+        }
+
+        // --- MARKETPLACE LOGIC ---
         let allShops = [];
         const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
         window.onload = loadMarketplace;
 
-        // --- 2. LOAD MARKETPLACE DATA ---
         async function loadMarketplace() {
             const list = document.getElementById('shops-list');
             try {
@@ -152,7 +193,6 @@
             }
         }
 
-        // --- 3. DISPLAY LOGIC ---
         function displayShops(shops) {
             const list = document.getElementById('shops-list');
             document.getElementById('shop-count').innerText = `${shops.length} Stores Found`;
@@ -188,7 +228,6 @@
             });
         }
 
-        // --- 4. SEARCH FILTER ---
         function filterShops() {
             const query = document.getElementById('shopSearch').value.toLowerCase();
             const filtered = allShops.filter(s => 
@@ -199,11 +238,10 @@
             displayShops(filtered);
         }
 
-        // --- 5. LOGOUT LOGIC ---
         function logout() { 
             if(confirm("Are you sure you want to logout?")) {
-                localStorage.clear(); // Saara data clear karein
-                window.location.replace('index.html'); // Redirect and prevent back action
+                localStorage.clear();
+                window.location.replace('index.html');
             }
         }
     </script>
