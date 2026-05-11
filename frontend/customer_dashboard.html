@@ -51,8 +51,14 @@
 
     <nav class="navbar">
         <div class="logo" onclick="location.reload()" style="cursor:pointer;">Local<span>Cart</span></div>
-        <div class="nav-right">
+        
+        <div class="nav-right" style="display: flex; align-items: center; gap: 20px;">
             
+            <div class="cart-icon-container" onclick="location.href='cart.html'" style="position: relative; cursor: pointer;">
+                <i class="fas fa-shopping-cart" style="font-size: 22px; color: #2f3542;"></i>
+                <span id="global-cart-count" class="cart-badge">0</span>
+            </div>
+
             <div class="profile-dropdown">
                 <div class="profile-icon" onclick="toggleProfileMenu()">
                     <i class="fas fa-user"></i>
@@ -127,6 +133,23 @@
             window.location.replace('index.html');
         }
 
+        // --- NEW: UPDATE CART BADGE LOGIC ---
+        function updateGlobalCartBadge() {
+            const cartData = JSON.parse(localStorage.getItem('cart') || '[]');
+            const totalItems = cartData.reduce((sum, item) => sum + item.qty, 0);
+            const badge = document.getElementById('global-cart-count');
+            
+            if (badge) {
+                badge.innerText = totalItems;
+                badge.style.display = totalItems > 0 ? 'block' : 'none';
+            }
+        }
+
+        // Window load hone par badge update karein
+        window.addEventListener('DOMContentLoaded', () => {
+            updateGlobalCartBadge();
+        });
+
         // --- PROFILE DROPDOWN LOGIC ---
         if(userName) document.getElementById('drop-name').innerText = userName;
         if(userEmail) document.getElementById('drop-email').innerText = userEmail;
@@ -169,7 +192,10 @@
         let allShops = [];
         const API_BASE_URL = 'https://localcart-c6il.onrender.com';
 
-        window.onload = loadMarketplace;
+        window.onload = () => {
+            loadMarketplace();
+            updateGlobalCartBadge(); // Load hote waqt bhi call kar diya safety ke liye
+        };
 
         async function loadMarketplace() {
             const list = document.getElementById('shops-list');
