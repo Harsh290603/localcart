@@ -24,17 +24,6 @@
         .p-info h4 { margin: 0 0 10px 0; font-size: 17px; color: #2f3542; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .p-info b { color: #2f3542; font-size: 20px; }
         
-        /* Modal & Slider */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); }
-        .modal-content { background: white; max-width: 900px; margin: 40px auto; border-radius: 20px; display: grid; grid-template-columns: 1.2fr 1fr; overflow: hidden; position: relative; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
-        @media (max-width: 800px) { .modal-content { grid-template-columns: 1fr; margin: 15px; } }
-        
-        .slider-container { position: relative; background: #fff; display: flex; align-items: center; justify-content: center; height: 450px; border-right: 1px solid #eee; }
-        .slider-img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 20px; }
-        .slider-btn { position: absolute; top: 50%; transform: translateY(-50%); background: white; color: #333; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 18px; display: none; z-index: 10; }
-        
         /* Floating Cart */
         .cart-btn { position: fixed; bottom: 30px; right: 30px; background: #2f3542; color: white; padding: 15px 30px; border-radius: 50px; font-weight: bold; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: none; cursor: pointer; z-index: 999; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
         .cart-count-badge { background: #ff4757; color: white; border-radius: 50%; padding: 2px 8px; font-size: 12px; }
@@ -67,25 +56,7 @@
         <i class="fas fa-shopping-cart"></i> View Cart <span class="cart-count-badge" id="cart-count">0</span>
     </button>
 
-    <div id="product-modal" class="modal">
-        <div class="modal-content">
-            <span onclick="closeModal()" style="position:absolute; top:20px; right:25px; font-size:25px; cursor:pointer; z-index:100;">&times;</span>
-            <div class="slider-container">
-                <button id="prevBtn" class="slider-btn" style="left:15px;" onclick="changeSlide(-1)">❮</button>
-                <img id="modal-img" class="slider-img" src="">
-                <button id="nextBtn" class="slider-btn" style="right:15px;" onclick="changeSlide(1)">❯</button>
-            </div>
-            <div style="padding:40px;">
-                <span id="modal-cat" style="color:#ff4757; font-weight:bold; font-size:12px; text-transform:uppercase;">Category</span>
-                <h1 id="modal-name" style="margin:10px 0; color:#2f3542;">Product Name</h1>
-                <h2 id="modal-price" style="margin-bottom:20px;">₹0</h2>
-                <p id="modal-desc" style="color: #666; line-height: 1.6; margin-bottom: 30px;"></p>
-                <button id="modal-add-btn" onclick="addToCartFromModal()" class="main-btn" style="width:100%; background:#2f3542;">Add to Cart</button>
-            </div>
-        </div>
-    </div>
-
- <script>
+    <script>
         const params = new URLSearchParams(window.location.search);
         const shopEmail = params.get('email');
         
@@ -94,8 +65,6 @@
 
         let currentShopProducts = [];
         let shopNameDisplay = ""; 
-        let currentImgIndex = 0;
-        let selectedProduct = null;
         let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 
         window.onload = () => {
@@ -109,7 +78,6 @@
 
         async function loadShopData() {
             try {
-                // Updated: Localhost ki jagah Render URL use kiya
                 const res = await fetch(`${API_BASE_URL}/api/get-shop-all/${shopEmail}`);
                 const data = await res.json();
                 
@@ -144,10 +112,13 @@
                 // Image handling
                 const img = (p.images && p.images.length) ? p.images[0] : 'https://via.placeholder.com/200';
                 
+                // Naya Function: Abhi photo pe click hoga toh ye new page khulega
+                const productStr = JSON.stringify(p).replace(/"/g, '&quot;');
+
                 const card = document.createElement('div');
                 card.className = 'p-card';
                 card.innerHTML = `
-                    <img src="${img}" class="p-img" onclick="openModal('${p._id}')">
+                    <img src="${img}" class="p-img" onclick="openProductPage('${productStr}')">
                     <div class="p-info">
                         <h4>${p.name}</h4>
                         <div>
@@ -171,42 +142,11 @@
             renderProducts(filtered);
         }
 
-        // --- MODAL & SLIDER LOGIC ---
-        function openModal(id) {
-            selectedProduct = currentShopProducts.find(p => p._id === id);
-            currentImgIndex = 0;
-            
-            document.getElementById('modal-name').innerText = selectedProduct.name;
-            document.getElementById('modal-price').innerText = '₹' + selectedProduct.price;
-            document.getElementById('modal-desc').innerText = selectedProduct.description || "Is product ki koi description nahi di gayi hai.";
-            document.getElementById('modal-cat').innerText = selectedProduct.category || "General";
-            
-            const images = selectedProduct.images || [];
-            document.getElementById('prevBtn').style.display = images.length > 1 ? 'block' : 'none';
-            document.getElementById('nextBtn').style.display = images.length > 1 ? 'block' : 'none';
-            
-            updateSlider();
-            document.getElementById('product-modal').style.display = "block";
-            document.body.style.overflow = "hidden"; // Background scroll stop
-        }
-
-        function closeModal() { 
-            document.getElementById('product-modal').style.display = "none"; 
-            document.body.style.overflow = "auto";
-        }
-
-        function updateSlider() {
-            const imgEl = document.getElementById('modal-img');
-            const images = selectedProduct.images || [];
-            imgEl.src = images.length ? images[currentImgIndex] : 'https://via.placeholder.com/400';
-        }
-
-        function changeSlide(n) {
-            const images = selectedProduct.images || [];
-            currentImgIndex += n;
-            if (currentImgIndex >= images.length) currentImgIndex = 0;
-            if (currentImgIndex < 0) currentImgIndex = images.length - 1;
-            updateSlider();
+        // --- NEW: REDIRECT TO PRODUCT PAGE LOGIC ---
+        function openProductPage(productStr) {
+            localStorage.setItem('viewProduct', productStr);
+            localStorage.setItem('currentShopName', shopNameDisplay); // Store shop name too
+            window.location.href = 'product_details.html';
         }
 
         // --- CART LOGIC ---
@@ -242,20 +182,10 @@
             }
         }
 
-        function addToCartFromModal() {
-            addToCart(selectedProduct._id);
-            closeModal();
-        }
-
         function updateCartUI() {
             const count = cart.reduce((sum, item) => sum + item.qty, 0);
             document.getElementById('cart-count').innerText = count;
         }
-
-        // Close modal when clicking outside
-        window.onclick = (e) => { 
-            if(e.target == document.getElementById('product-modal')) closeModal(); 
-        };
     </script>
 </body>
 </html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details | Local Cart</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .product-container { max-width: 1000px; margin: 40px auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .product-image { width: 100%; border-radius: 15px; object-fit: cover; aspect-ratio: 1/1; border: 1px solid #eee; }
+        .product-info { display: flex; flex-direction: column; justify-content: center; }
+        .product-tag { background: #fff1f2; color: #ff4757; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; display: inline-block; width: max-content; margin-bottom: 15px;}
+        .product-title { font-size: 28px; color: #2f3542; margin-bottom: 10px; }
+        .product-price { font-size: 24px; font-weight: bold; color: #2ed573; margin-bottom: 20px; }
+        .product-desc { color: #747d8c; line-height: 1.6; margin-bottom: 30px; }
+        
+        .qty-selector { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+        .qty-btn { background: #f1f2f6; border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; color: #2f3542; transition: 0.3s; }
+        .qty-btn:hover { background: #dfe4ea; }
+        .qty-display { font-size: 18px; font-weight: bold; min-width: 30px; text-align: center; }
+
+        .add-to-cart-btn { background: #2f3542; color: white; border: none; padding: 15px 30px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;}
+        .add-to-cart-btn:hover { background: #ff4757; }
+        
+        @media (max-width: 768px) { .product-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body style="background: #fdfdfd;">
+
+    <nav class="navbar">
+        <div class="logo" onclick="history.back()" style="cursor:pointer;"><i class="fas fa-arrow-left"></i> Back</div>
+        <div class="nav-right" style="display: flex; align-items: center; gap: 20px;">
+            <div class="cart-icon-container" onclick="location.href='cart.html'" style="position: relative; cursor: pointer;">
+                <i class="fas fa-shopping-cart" style="font-size: 22px; color: #2f3542;"></i>
+                <span id="global-cart-count" class="cart-badge">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" id="product-details-content">
+        </div>
+
+    <script>
+        let currentProduct = null;
+        let qty = 1;
+
+        window.onload = () => {
+            updateGlobalCartBadge();
+            // LocalStorage se product ka data uthana jo shop_view se bheja gaya hai
+            const productData = localStorage.getItem('viewProduct');
+            
+            if(!productData) {
+                alert("No product selected!");
+                history.back();
+                return;
+            }
+            
+            currentProduct = JSON.parse(productData);
+            renderProduct();
+        };
+
+        function renderProduct() {
+            const container = document.getElementById('product-details-content');
+            const img = (currentProduct.images && currentProduct.images.length > 0) ? currentProduct.images[0] : 'https://via.placeholder.com/500?text=No+Image';
+            
+            container.innerHTML = `
+                <div class="product-container">
+                    <div>
+                        <img src="${img}" alt="${currentProduct.name}" class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <span class="product-tag">${currentProduct.category || 'General'}</span>
+                        <h1 class="product-title">${currentProduct.name}</h1>
+                        <div class="product-price">₹${currentProduct.price}</div>
+                        <p class="product-desc">${currentProduct.description || 'No description available for this product.'}</p>
+                        
+                        <div class="qty-selector">
+                            <button class="qty-btn" onclick="changeQty(-1)">-</button>
+                            <span class="qty-display" id="product-qty">${qty}</span>
+                            <button class="qty-btn" onclick="changeQty(1)">+</button>
+                        </div>
+
+                        <button class="add-to-cart-btn" onclick="addToCart()">
+                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function changeQty(change) {
+            qty += change;
+            if(qty < 1) qty = 1;
+            document.getElementById('product-qty').innerText = qty;
+        }
+
+        function addToCart() {
+            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const existing = cart.find(item => item._id === currentProduct._id);
+            
+            if(existing) {
+                existing.qty += qty;
+            } else {
+                cart.push({
+                    ...currentProduct,
+                    qty: qty,
+                    shopName: localStorage.getItem('currentShopName') || 'Local Store' 
+                });
+            }
+            
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateGlobalCartBadge();
+            alert("Added to Cart Successfully! ✅");
+        }
+
+        function updateGlobalCartBadge() {
+            const cartData = JSON.parse(localStorage.getItem('cart') || '[]');
+            const totalItems = cartData.reduce((sum, item) => sum + item.qty, 0);
+            const badge = document.getElementById('global-cart-count');
+            if (badge) {
+                badge.innerText = totalItems;
+                badge.style.display = totalItems > 0 ? 'block' : 'none';
+            }
+        }
+    </script>
+</body>
+</html>
